@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.codex.sns-auto.autocommit</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/bigmac/openclaw/workspace/sns_auto/scripts/autocommit_watch.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>AUTO_COMMIT_AUTHOR_EMAIL</key>
+    <string>bigmac@local</string>
+    <key>AUTO_COMMIT_AUTHOR_NAME</key>
+    <string>sns-auto-bot</string>
+    <key>AUTO_COMMIT_INTERVAL_SECONDS</key>
+    <string>5</string>
+    <key>AUTO_COMMIT_QUIET_SECONDS</key>
+    <string>12</string>
+  </dict>
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/tmp/sns_auto_autocommit.err</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/sns_auto_autocommit.log</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/bigmac/openclaw/workspace/sns_auto</string>
+</dict>
+</plist>
