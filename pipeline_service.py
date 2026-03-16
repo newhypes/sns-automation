@@ -24,7 +24,7 @@ DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8010
 VIDEO_SIZE = (1080, 1920)
 VIDEO_FPS = 30
-SUBTITLE_FONT_SIZE = 70
+SUBTITLE_FONT_SIZE = 80
 SENTENCE_END_RE = re.compile(r"""[.!?]["')\]]*$""")
 SUBTITLE_LABEL_RE = re.compile(r"^\s*(hook|script)\s*:\s*", re.IGNORECASE)
 SCRIPT_LABEL_RE = re.compile(r"^\s*(hook|topic|script)\s*:\s*(.*)$", re.IGNORECASE)
@@ -306,6 +306,19 @@ def find_subtitle_font_path() -> Path:
     return find_font_path()
 
 
+def subtitle_font_name() -> str:
+    path = find_subtitle_font_path().name.lower()
+    if "din condensed" in path:
+        return "DIN Condensed"
+    if "arial narrow" in path:
+        return "Arial Narrow"
+    if "arial black" in path:
+        return "Arial Black"
+    if "arial" in path:
+        return "Arial"
+    return "Arial"
+
+
 def sanitize_subtitle_text(text: str) -> str:
     cleaned = " ".join(text.split())
     cleaned = SUBTITLE_LABEL_RE.sub("", cleaned)
@@ -313,16 +326,20 @@ def sanitize_subtitle_text(text: str) -> str:
     return cleaned
 
 
-def split_subtitle_text(text: str, max_words: int = 6, max_chars: int = 34) -> list[str]:
+def split_subtitle_text(text: str, max_width: int = 860) -> list[str]:
     words = text.split()
     if not words:
         return []
 
+    probe = ImageDraw.Draw(Image.new("RGBA", VIDEO_SIZE, (0, 0, 0, 0)))
+    font = subtitle_font()
     chunks: list[str] = []
     current: list[str] = []
     for word in words:
         trial = " ".join(current + [word]).strip()
-        if current and (len(current) >= max_words or len(trial) > max_chars):
+        trial_bbox = probe.textbbox((0, 0), trial, font=font, stroke_width=8)
+        trial_width = trial_bbox[2] - trial_bbox[0]
+        if current and trial_width > max_width:
             chunks.append(" ".join(current))
             current = [word]
         else:
@@ -342,7 +359,19 @@ def subtitle_display_entries(entries: list[dict[str, Any]]) -> list[dict[str, An
         if not text:
             continue
 
-        segments.append({"start": float(entry["start"]), "end": float(entry["end"]), "text": text})
+        chunks = split_subtitle_text(text)
+        if not chunks:
+            continue
+
+        start = float(entry["start"])
+        end = float(entry["end"])
+        total_duration = max(0.1, end - start)
+        chunk_duration = total_duration / len(chunks)
+
+        for index, chunk in enumerate(chunks):
+            chunk_start = start + (chunk_duration * index)
+            chunk_end = end if index == len(chunks) - 1 else start + (chunk_duration * (index + 1))
+            segments.append({"start": chunk_start, "end": chunk_end, "text": chunk})
 
     return segments or entries
 
@@ -394,48 +423,6 @@ def subtitle_font(size: int = SUBTITLE_FONT_SIZE) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(find_subtitle_font_path()), size)
 
 
-def layout_subtitle_lines(text: str, max_width: int = 960) -> list[str]:
-    normalized = " ".join(text.split()).strip()
-    if not normalized:
-        return []
-
-    probe = ImageDraw.Draw(Image.new("RGBA", VIDEO_SIZE, (0, 0, 0, 0)))
-    font = subtitle_font()
-    single_bbox = probe.textbbox((0, 0), normalized, font=font, stroke_width=8)
-    if (single_bbox[2] - single_bbox[0]) <= max_width:
-        return [normalized]
-
-    words = normalized.split()
-    if len(words) == 1:
-        return [normalized]
-
-    best_split: tuple[float, list[str]] | None = None
-    fallback_split: tuple[float, list[str]] | None = None
-
-    for index in range(1, len(words)):
-        first = " ".join(words[:index]).strip()
-        second = " ".join(words[index:]).strip()
-        if not first or not second:
-            continue
-
-        first_bbox = probe.textbbox((0, 0), first, font=font, stroke_width=8)
-        second_bbox = probe.textbbox((0, 0), second, font=font, stroke_width=8)
-        first_width = first_bbox[2] - first_bbox[0]
-        second_width = second_bbox[2] - second_bbox[0]
-        widest = max(first_width, second_width)
-        split = [first, second]
-
-        if fallback_split is None or widest < fallback_split[0]:
-            fallback_split = (widest, split)
-
-        if first_width <= max_width and second_width <= max_width:
-            if best_split is None or widest < best_split[0]:
-                best_split = (widest, split)
-
-    selected = best_split or fallback_split
-    return selected[1] if selected else [normalized]
-
-
 def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> None:
     style_block = "\n".join(
         [
@@ -451,7 +438,7 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
             ",".join(
                 [
                     "Default",
-                    "Arial",
+                    subtitle_font_name(),
                     str(SUBTITLE_FONT_SIZE),
                     ass_color("#FFFFFF"),
                     ass_color("#FFFFFF"),
@@ -466,12 +453,12 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
                     "0",
                     "0",
                     "1",
-                    "6",
+                    "7",
                     "0",
                     "2",
-                    "80",
-                    "80",
-                    "130",
+                    "110",
+                    "110",
+                    "170",
                     "1",
                 ]
             ),
@@ -481,7 +468,7 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
         ]
     )
     events = [
-        f"Dialogue: 0,{format_ass_timestamp(segment['start'])},{format_ass_timestamp(segment['end'])},Default,,0,0,0,,{escape_ass_text(chr(10).join(layout_subtitle_lines(str(segment['text']))))}"
+        f"Dialogue: 0,{format_ass_timestamp(segment['start'])},{format_ass_timestamp(segment['end'])},Default,,0,0,0,,{escape_ass_text(str(segment['text']))}"
         for segment in segments
     ]
     destination.write_text(style_block + "\n" + "\n".join(events) + "\n", encoding="utf-8")
@@ -495,25 +482,19 @@ def render_subtitle_frame(
     overlay = Image.new("RGBA", VIDEO_SIZE, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     font = subtitle_font()
-    lines = layout_subtitle_lines(text)
-    line_spacing = 16
-    line_boxes = [draw.textbbox((0, 0), line, font=font, stroke_width=8) for line in lines]
-    line_heights = [box[3] - box[1] for box in line_boxes]
-    total_height = sum(line_heights) + (line_spacing * max(0, len(lines) - 1))
-    y = VIDEO_SIZE[1] - total_height - 170
-
-    for line, box, line_height in zip(lines, line_boxes, line_heights):
-        text_width = box[2] - box[0]
-        x = int((VIDEO_SIZE[0] - text_width) / 2)
-        draw.text(
-            (x, y),
-            line,
-            font=font,
-            fill=(255, 255, 255, 255),
-            stroke_width=8,
-            stroke_fill=(0, 0, 0, 255),
-        )
-        y += line_height + line_spacing
+    bbox = draw.textbbox((0, 0), text, font=font, stroke_width=8)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = int((VIDEO_SIZE[0] - text_width) / 2)
+    y = VIDEO_SIZE[1] - text_height - 170
+    draw.text(
+        (x, y),
+        text,
+        font=font,
+        fill=(255, 255, 255, 255),
+        stroke_width=8,
+        stroke_fill=(0, 0, 0, 255),
+    )
 
     overlay.save(destination, format="PNG")
 
