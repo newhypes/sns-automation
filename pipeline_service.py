@@ -293,6 +293,19 @@ def find_font_path() -> Path:
     raise FileNotFoundError("No supported TTF font found for subtitle rendering")
 
 
+def find_subtitle_font_path() -> Path:
+    candidates = (
+        Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Black.ttf"),
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return find_font_path()
+
+
 def sanitize_subtitle_text(text: str) -> str:
     cleaned = " ".join(text.split())
     cleaned = SUBTITLE_LABEL_RE.sub("", cleaned)
@@ -378,7 +391,7 @@ def escape_ass_text(text: str) -> str:
 
 
 def subtitle_font(size: int = SUBTITLE_FONT_SIZE) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(str(find_font_path()), size)
+    return ImageFont.truetype(str(find_subtitle_font_path()), size)
 
 
 def layout_subtitle_lines(text: str, max_width: int = 960) -> list[str]:
