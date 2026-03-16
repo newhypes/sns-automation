@@ -17,9 +17,14 @@ generate_gradient() {
   local color_c="$4"
   local x_expr="$5"
   local y_expr="$6"
+  local -a c0 c1 c2
+
+  c0=(${(s:,:)color_a})
+  c1=(${(s:,:)color_b})
+  c2=(${(s:,:)color_c})
 
   ffmpeg -y \
-    -f lavfi -i "nullsrc=s=1080x1920,geq=r='lerp(lerp(${color_a%%,*},${color_b%%,*},${x_expr}),${color_c%%,*},${y_expr})':g='lerp(lerp(${color_a#*,},${color_b#*,},${x_expr}),${color_c#*,},${y_expr})':b='lerp(lerp(${color_a##*,},${color_b##*,},${x_expr}),${color_c##*,},${y_expr})'" \
+    -f lavfi -i "nullsrc=s=1080x1920,geq=r='lerp(lerp(${c0[1]},${c1[1]},${x_expr}),${c2[1]},${y_expr})':g='lerp(lerp(${c0[2]},${c1[2]},${x_expr}),${c2[2]},${y_expr})':b='lerp(lerp(${c0[3]},${c1[3]},${x_expr}),${c2[3]},${y_expr})'" \
     -frames:v 1 \
     -update 1 \
     "$output_path" \
