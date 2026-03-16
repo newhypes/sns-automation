@@ -26,6 +26,7 @@ VIDEO_SIZE = (1080, 1920)
 VIDEO_FPS = 30
 SENTENCE_END_RE = re.compile(r"""[.!?]["')\]]*$""")
 SUBTITLE_LABEL_RE = re.compile(r"^\s*(hook|script)\s*:\s*", re.IGNORECASE)
+SCRIPT_LABEL_RE = re.compile(r"^\s*(hook|topic|script)\s*:\s*(.*)$", re.IGNORECASE)
 
 VOICE_MAP = {
     "female": {
@@ -342,6 +343,29 @@ def subtitle_display_entries(entries: list[dict[str, Any]]) -> list[dict[str, An
             segments.append({"start": chunk_start, "end": chunk_end, "text": chunk})
 
     return segments or entries
+
+
+def normalize_script_for_tts(script: str) -> str:
+    segments: list[str] = []
+
+    for raw_line in script.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+
+        match = SCRIPT_LABEL_RE.match(stripped)
+        if match:
+            label = match.group(1).lower()
+            remainder = match.group(2).strip()
+            if label == "topic":
+                continue
+            stripped = remainder
+
+        stripped = stripped.strip().strip('"').strip("'").strip()
+        if stripped:
+            segments.append(stripped)
+
+    return "\n\n".join(segments)
 
 
 def format_ass_timestamp(seconds: float) -> str:
@@ -661,11 +685,12 @@ def handle_tts(data: dict[str, Any]) -> dict[str, Any]:
     def execute() -> dict[str, Any]:
         ensure_directory(audio_host.parent)
         ensure_directory(srt_host.parent)
+        spoken_script = normalize_script_for_tts(str(data["script"]))
         run_command(
             [
                 "edge-tts",
                 "-t",
-                str(data["script"]),
+                spoken_script,
                 "-v",
                 str(data["voice"]),
                 "--write-media",
