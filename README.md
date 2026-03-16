@@ -4,10 +4,10 @@
 
 현재 업로드 자동화는 아래 파일로 연결됩니다.
 
-- YouTube Shorts: [pipeline/youtube_upload.py](/Users/bigmac/openclaw/workspace/sns_auto/pipeline/youtube_upload.py)
-- TikTok: [pipeline/tiktok_upload.py](/Users/bigmac/openclaw/workspace/sns_auto/pipeline/tiktok_upload.py)
-- Instagram Reels: [pipeline/instagram_upload.py](/Users/bigmac/openclaw/workspace/sns_auto/pipeline/instagram_upload.py)
-- n8n workflow generator: [build_wf02_final.py](/Users/bigmac/openclaw/workspace/sns_auto/build_wf02_final.py)
+- YouTube Shorts: `pipeline/youtube_upload.py`
+- TikTok: `pipeline/tiktok_upload.py`
+- Instagram Reels: `pipeline/instagram_upload.py`
+- n8n workflow generator: `build_wf02_final.py`
 
 ## Credential Paths
 
@@ -27,7 +27,7 @@
 3. Credentials에서 `OAuth client ID`를 만들고 Application type은 `Desktop app`으로 선택합니다.
 4. 다운로드한 JSON을 `~/.openclaw/credentials/youtube_client_secret.json`으로 저장합니다.
 
-첫 업로드 시 [pipeline/youtube_upload.py](/Users/bigmac/openclaw/workspace/sns_auto/pipeline/youtube_upload.py)가 브라우저 인증을 열고, 승인 후 `youtube_token.json`을 저장합니다. 이후에는 refresh token으로 자동 갱신합니다.
+첫 업로드 시 `pipeline/youtube_upload.py`가 브라우저 인증을 열고, 승인 후 `youtube_token.json`을 저장합니다. 이후에는 refresh token으로 자동 갱신합니다.
 
 ### YouTube credential 예시
 
@@ -82,7 +82,7 @@ python3 pipeline/youtube_upload.py /Users/bigmac/.openclaw/workspace/content_fac
 }
 ```
 
-[pipeline/tiktok_upload.py](/Users/bigmac/openclaw/workspace/sns_auto/pipeline/tiktok_upload.py)는 `refresh_token`이 있으면 먼저 토큰 갱신을 시도한 뒤, Direct Post 업로드를 수행합니다.
+`pipeline/tiktok_upload.py`는 `refresh_token`이 있으면 먼저 토큰 갱신을 시도한 뒤, Direct Post 업로드를 수행합니다.
 
 ### 수동 테스트
 
@@ -137,7 +137,7 @@ python3 pipeline/instagram_upload.py /Users/bigmac/.openclaw/workspace/content_f
 
 ## 4. n8n 자동 업로드
 
-[build_wf02_final.py](/Users/bigmac/openclaw/workspace/sns_auto/build_wf02_final.py)는 렌더 완료 후 아래 순서로 업로드 노드를 생성합니다.
+`build_wf02_final.py`는 렌더 완료 후 아래 순서로 업로드 노드를 생성합니다.
 
 1. `build_upload_queue`
 2. `validate_upload_queue`

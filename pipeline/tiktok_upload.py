@@ -15,6 +15,7 @@ from upload_common import (
     print_json,
     read_task_and_video,
     request_json,
+    save_json,
     success_payload,
 )
 
@@ -51,12 +52,13 @@ def refresh_access_token(credentials: dict[str, Any], credential_file: Path) -> 
     )
     if not response.ok:
         raise UploadError(f"TikTok token refresh failed: {response.status_code} {response.text}")
-    refreshed = response.json()
+    raw_payload = response.json()
+    refreshed = raw_payload.get("data", raw_payload)
     if "error" in refreshed:
         raise UploadError(f"TikTok token refresh failed: {refreshed}")
     merged = dict(credentials)
     merged.update({key: value for key, value in refreshed.items() if value})
-    credential_file.write_text(__import__("json").dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    save_json(credential_file, merged)
     return merged
 
 
