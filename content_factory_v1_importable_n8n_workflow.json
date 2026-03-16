@@ -1,0 +1,237 @@
+{
+  "name": "content_factory_v1",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "manual trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a viral dating and relationship psychology content strategist for TikTok and Reels. Output exactly 5 numbered topic lines only. Each line must be under 9 words, emotionally intense, natural, and curiosity-driven. Focus on attraction, attachment, mixed signals, texting, emotional unavailability, obsession, distance, respect, and relationship psychology. Do not use quotes. Do not ask questions. Do not add explanations.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate 5 viral relationship psychology topics in this exact style:\\n1. Why emotionally unavailable people feel addictive\\n2. The texting habit that quietly kills attraction\\n3. Why mixed signals create obsession\\n4. The mistake that makes people lose respect\\n5. Why being too available lowers attraction\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 90\n}"
+      },
+      "id": "2",
+      "name": "MLX generate topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst topics = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 5);\n\nreturn [\n  {\n    json: {\n      raw,\n      topics\n    }\n  }\n];"
+      },
+      "id": "3",
+      "name": "clean topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "topics",
+        "include": "allOtherFields"
+      },
+      "id": "4",
+      "name": "Split Topics",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  topic: $json.topics\n};"
+      },
+      "id": "5",
+      "name": "rename topic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You write viral short-form hooks for dating psychology videos. Use the exact topic provided. Output exactly 3 numbered hooks. Each hook must be under 12 words, natural, emotionally sharp, and directly related to the topic. Avoid generic dating advice. Avoid broad questions. Do not mention unrelated ideas.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Topic: {{$json.topic}}\\nWrite 3 hooks that stay tightly focused on this exact topic.\\nMatch this style:\\n1. The real reason he suddenly pulls away\\n2. Why this texting habit kills attraction\\n3. The mistake that makes people lose respect\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 90\n}"
+      },
+      "id": "6",
+      "name": "hook generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst hooks = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 3);\n\nreturn {\n  topic: $('rename topic').item.json.topic,\n  raw_hooks: raw,\n  hooks\n};"
+      },
+      "id": "7",
+      "name": "clean_hooks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "hooks",
+        "include": "allOtherFields"
+      },
+      "id": "8",
+      "name": "Split Hooks",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  topic: $json.topic,\n  hook: $json.hooks\n};"
+      },
+      "id": "9",
+      "name": "rename_hook",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You write short-form relationship psychology scripts for TikTok, Reels, and Shorts. Output only the spoken script. Make it emotionally engaging, simple, natural, and easy to narrate. Use 5 to 7 short lines.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Topic: {{$json.topic}}\\nHook: {{$json.hook}}\\nWrite a 30-second spoken script in simple English. Start with the hook as the first line. Then explain the psychology clearly and end with a memorable closing line.\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 220\n}"
+      },
+      "id": "10",
+      "name": "script generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const script = $json.choices?.[0]?.message?.content || \"\";\n\nreturn {\n  topic: $('rename_hook').item.json.topic,\n  hook: $('rename_hook').item.json.hook,\n  script: script.trim()\n};"
+      },
+      "id": "11",
+      "name": "clean_scripts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function slugify(text) {\n  return text\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .trim()\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .slice(0, 60);\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn {\n  date: today,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: slugify($json.topic),\n  hook_slug: slugify($json.hook)\n};"
+      },
+      "id": "12",
+      "name": "build_slug",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const filename = `${$json.date}_${$json.slug}_${$json.hook_slug}.json`;\n\nconst content = JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug\n}, null, 2);\n\nreturn {\n  json: {\n    filepath: `/workspace/content_factory/scripts/${filename}`,\n    filename\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content).toString('base64'),\n      mimeType: 'application/json',\n      fileName: filename\n    }\n  }\n};"
+      },
+      "id": "13",
+      "name": "prepare_json_file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "manual trigger": {
+      "main": [[{ "node": "MLX generate topic", "type": "main", "index": 0 }]]
+    },
+    "MLX generate topic": {
+      "main": [[{ "node": "clean topics", "type": "main", "index": 0 }]]
+    },
+    "clean topics": {
+      "main": [[{ "node": "Split Topics", "type": "main", "index": 0 }]]
+    },
+    "Split Topics": {
+      "main": [[{ "node": "rename topic", "type": "main", "index": 0 }]]
+    },
+    "rename topic": {
+      "main": [[{ "node": "hook generator", "type": "main", "index": 0 }]]
+    },
+    "hook generator": {
+      "main": [[{ "node": "clean_hooks", "type": "main", "index": 0 }]]
+    },
+    "clean_hooks": {
+      "main": [[{ "node": "Split Hooks", "type": "main", "index": 0 }]]
+    },
+    "Split Hooks": {
+      "main": [[{ "node": "rename_hook", "type": "main", "index": 0 }]]
+    },
+    "rename_hook": {
+      "main": [[{ "node": "script generator", "type": "main", "index": 0 }]]
+    },
+    "script generator": {
+      "main": [[{ "node": "clean_scripts", "type": "main", "index": 0 }]]
+    },
+    "clean_scripts": {
+      "main": [[{ "node": "build_slug", "type": "main", "index": 0 }]]
+    },
+    "build_slug": {
+      "main": [[{ "node": "prepare_json_file", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

@@ -1,0 +1,450 @@
+{\rtf1\ansi\ansicpg949\cocoartf2868
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 .SFNS-Regular;}
+{\colortbl;\red255\green255\blue255;\red14\green14\blue14;}
+{\*\expandedcolortbl;;\cssrgb\c6700\c6700\c6700;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\sl324\slmult1\pardirnatural\partightenfactor0
+
+\f0\fs28 \cf2 OPENCLAW PROJECT CONTEXT\
+AI SHORT-FORM CONTENT FACTORY\
+CURRENT SYSTEM STATE + NEXT STEPS\
+\
+\
+--------------------------------------------------\
+1. PROJECT GOAL\
+--------------------------------------------------\
+\
+Build an automated AI short-form content system using OpenClaw.\
+\
+The system should automatically:\
+\
+1) Generate viral topics\
+2) Generate hooks\
+3) Generate scripts\
+4) Generate voice (TTS)\
+5) Generate subtitles\
+6) Build short videos\
+7) Upload videos to\
+\
+- TikTok\
+- YouTube Shorts\
+- Instagram Reels\
+\
+\
+--------------------------------------------------\
+2. CONTENT STRATEGY\
+--------------------------------------------------\
+\
+Accounts: 3\
+\
+Account A\
+Female podcast perspective\
+\
+Account B\
+Male podcast perspective\
+\
+Account C\
+Psychology narrator\
+\
+\
+Content structure:\
+\
+1 topic -> 3 videos\
+\
+Female opinion\
+Male opinion\
+Psychology explanation\
+\
+\
+--------------------------------------------------\
+3. DAILY PRODUCTION TARGET\
+--------------------------------------------------\
+\
+5 topics per day\
+\
+Each topic -> 3 videos\
+\
+Total videos per day:\
+\
+15 videos\
+\
+\
+Distribution:\
+\
+Each video uploaded to\
+\
+TikTok\
+YouTube Shorts\
+Instagram Reels\
+\
+\
+Total daily uploads:\
+\
+45 uploads\
+\
+\
+--------------------------------------------------\
+4. OPENCLAW AGENT STRUCTURE\
+--------------------------------------------------\
+\
+Agents created:\
+\
+main\
+fast\
+ops\
+content\
+dev\
+\
+\
+Roles:\
+\
+main\
+= orchestrator\
+\
+ops\
+= monitoring + cron automation\
+\
+content\
+= content generation pipeline\
+\
+dev\
+= coding / app development\
+\
+\
+--------------------------------------------------\
+5. CURRENT OPENCLAW WORKSPACE STRUCTURE\
+--------------------------------------------------\
+\
+~/.openclaw/workspace/content_factory\
+\
+\
+content_factory/\
+\uc0\u9474 \
+\uc0\u9500  topics\
+\uc0\u9500  hooks\
+\uc0\u9500  scripts\
+\uc0\u9474 \
+\uc0\u9500  audio\
+\uc0\u9500  subs\
+\uc0\u9500  videos\
+\uc0\u9474 \
+\uc0\u9500  images\
+\uc0\u9474    \u9500  female_host\
+\uc0\u9474    \u9500  male_host\
+\uc0\u9474    \u9492  psych_host\
+\uc0\u9474 \
+\uc0\u9492  pipeline\
+    \uc0\u9500  factory_run_prompt.txt\
+    \uc0\u9500  VOICE_MAP.json\
+    \uc0\u9492  factory_render_all.sh\
+\
+\
+--------------------------------------------------\
+6. CURRENT WORKING STATUS\
+--------------------------------------------------\
+\
+Successfully generated:\
+\
+Topics\
+Hooks\
+Scripts\
+\
+\
+Example files:\
+\
+topics/\
+2026-03-06_topics.json\
+\
+hooks/\
+2026-03-06_emotionally-unavailable-addictive_hooks.json\
+\
+scripts/\
+2026-03-06_emotionally-unavailable-addictive_scripts.json\
+\
+\
+Example topics:\
+\
+emotionally unavailable people addictive\
+texting habits kill attraction\
+healthy love feels boring\
+chemistry vs compatibility\
+anxious attachment sabotage\
+\
+\
+--------------------------------------------------\
+7. REMOTE DEVELOPMENT ENVIRONMENT\
+--------------------------------------------------\
+\
+Remote access is configured.\
+\
+Tailscale\
+SSH\
+tmux\
+\
+Connection from iPhone:\
+\
+ssh bigmac@100.x.x.x\
+tmux attach -t ai\
+\
+This allows remote development from phone.\
+\
+\
+--------------------------------------------------\
+8. CRON AUTOMATION\
+--------------------------------------------------\
+\
+Configured jobs:\
+\
+daily-ops-report\
+\
+hourly-failure-watch\
+\
+\
+--------------------------------------------------\
+9. WHAT IS NOT FINISHED YET\
+--------------------------------------------------\
+\
+The pipeline currently stops at:\
+\
+SCRIPT GENERATION\
+\
+\
+The following stages still need to be implemented:\
+\
+1) ElevenLabs voice generation\
+2) Subtitle generation\
+3) Video rendering\
+4) Character image library\
+5) Platform auto uploader\
+\
+\
+--------------------------------------------------\
+10. NEXT IMPLEMENTATION STEPS\
+--------------------------------------------------\
+\
+\
+STEP 0\
+ELEVENLABS API KEY SETUP\
+\
+\
+Create credentials directory:\
+\
+mkdir -p ~/.openclaw/credentials\
+\
+\
+Save API key:\
+\
+echo "YOUR_ELEVENLABS_API_KEY" > ~/.openclaw/credentials/elevenlabs\
+\
+\
+Set permissions:\
+\
+chmod 700 ~/.openclaw/credentials\
+chmod 600 ~/.openclaw/credentials/elevenlabs\
+\
+\
+Verify key file exists:\
+\
+ls ~/.openclaw/credentials\
+\
+\
+Expected output:\
+\
+elevenlabs\
+\
+\
+--------------------------------------------------\
+STEP 1\
+SELECT ELEVENLABS VOICES\
+\
+\
+List voices:\
+\
+curl https://api.elevenlabs.io/v1/voices \\\
+  -H "xi-api-key: $(cat ~/.openclaw/credentials/elevenlabs)"\
+\
+\
+Choose voices for:\
+\
+female_podcast\
+male_podcast\
+psych_narrator\
+\
+\
+Update file:\
+\
+~/.openclaw/workspace/content_factory/pipeline/VOICE_MAP.json\
+\
+\
+Example structure:\
+\
+\
+\{\
+ "female_podcast": \{\
+  "voice_id": "VOICE_ID_HERE",\
+  "model": "eleven_multilingual_v2"\
+ \},\
+\
+ "male_podcast": \{\
+  "voice_id": "VOICE_ID_HERE",\
+  "model": "eleven_multilingual_v2"\
+ \},\
+\
+ "psych_narrator": \{\
+  "voice_id": "VOICE_ID_HERE",\
+  "model": "eleven_multilingual_v2"\
+ \}\
+\}\
+\
+\
+--------------------------------------------------\
+STEP 2\
+VOICE GENERATION\
+\
+\
+Create audio files from scripts.\
+\
+Output folder:\
+\
+content_factory/audio/\
+\
+\
+Each script -> one voice file.\
+\
+\
+Example output:\
+\
+2026-03-06_emotionally-unavailable-addictive_female.mp3\
+\
+\
+--------------------------------------------------\
+STEP 3\
+SUBTITLE GENERATION\
+\
+\
+Convert script text to SRT subtitles.\
+\
+\
+Output folder:\
+\
+content_factory/subs/\
+\
+\
+Example:\
+\
+2026-03-06_emotionally-unavailable-addictive_female.srt\
+\
+\
+--------------------------------------------------\
+STEP 4\
+VIDEO RENDERING\
+\
+\
+Use ffmpeg pipeline.\
+\
+\
+Script:\
+\
+pipeline/factory_render_all.sh\
+\
+\
+Pipeline:\
+\
+script\
++ voice\
++ subtitles\
++ image\
+=\
+video\
+\
+\
+Output folder:\
+\
+content_factory/videos/\
+\
+\
+Example:\
+\
+2026-03-06_emotionally-unavailable-addictive_female.mp4\
+\
+\
+--------------------------------------------------\
+STEP 5\
+CHARACTER IMAGE LIBRARY\
+\
+\
+Generate reusable image sets.\
+\
+\
+Female podcast host\
+\
+30 images\
+\
+\
+Male podcast host\
+\
+30 images\
+\
+\
+Psychology narrator\
+\
+30 images\
+\
+\
+Total images:\
+\
+90\
+\
+\
+Saved to:\
+\
+images/female_host\
+images/male_host\
+images/psych_host\
+\
+\
+These images will produce hundreds of videos.\
+\
+\
+--------------------------------------------------\
+STEP 6\
+AUTO UPLOADER AGENTS\
+\
+\
+Future agents:\
+\
+tiktok_uploader\
+youtube_shorts_uploader\
+instagram_reels_uploader\
+\
+\
+These will upload generated videos automatically.\
+\
+\
+--------------------------------------------------\
+11. FINAL AUTOMATION PIPELINE\
+--------------------------------------------------\
+\
+trend_scraper\
+\uc0\u8595 \
+hook_generator\
+\uc0\u8595 \
+script_generator\
+\uc0\u8595 \
+voice_generator\
+\uc0\u8595 \
+video_renderer\
+\uc0\u8595 \
+auto_publisher\
+\
+\
+--------------------------------------------------\
+12. KEY PRINCIPLE\
+--------------------------------------------------\
+\
+speed > perfection\
+\
+\
+Success milestone:\
+\
+300 videos published}

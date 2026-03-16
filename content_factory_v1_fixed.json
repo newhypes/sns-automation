@@ -1,0 +1,372 @@
+{
+  "name": "content_factory_v1_full_with_save",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "aee00e3e-8e00-4e0b-81af-f6ef260660da",
+      "name": "manual trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a viral dating and relationship psychology content strategist for TikTok and Reels. Output exactly 5 numbered topic lines only. Each line must be under 9 words, emotionally intense, natural, and curiosity-driven. Focus on attraction, attachment, mixed signals, texting, emotional unavailability, obsession, distance, respect, and relationship psychology. Do not use quotes. Do not ask questions. Do not add explanations.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate 5 viral relationship psychology topics in this exact style:\\\\n1. Why emotionally unavailable people feel addictive\\\\n2. The texting habit that quietly kills attraction\\\\n3. Why mixed signals create obsession\\\\n4. The mistake that makes people lose respect\\\\n5. Why being too available lowers attraction\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 90\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "bd1fbe73-0cf8-446a-9c27-3bf359ef80f2",
+      "name": "MLX generate topic"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst topics = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 5);\n\nreturn [\n  {\n    json: {\n      raw,\n      topics\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ],
+      "id": "67d8e9dc-e32d-46c6-8506-88723c14d9c3",
+      "name": "clean_topics"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "topics",
+        "include": "allOtherFields"
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        680,
+        0
+      ],
+      "id": "2ac6bdda-faca-4b85-a16f-f30f8a7092b2",
+      "name": "Split Topics"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return {\n  topic: $json.topics\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "id": "15b2b262-ee0e-489a-be96-84e302952a1d",
+      "name": "rename topic"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You write viral short-form hooks for dating psychology videos. Use the exact topic provided. Output exactly 3 numbered hooks. Each hook must be under 12 words, natural, emotionally sharp, and directly related to the topic. Avoid generic dating advice. Avoid broad questions. Do not mention unrelated ideas.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Topic: {{$json.topic}}\\\\nWrite 3 hooks that stay tightly focused on this exact topic.\\\\nMatch this style:\\\\n1. The real reason he suddenly pulls away\\\\n2. Why this texting habit kills attraction\\\\n3. The mistake that makes people lose respect\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 90\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1140,
+        0
+      ],
+      "id": "88a80fad-20de-495b-ae8b-289d8a6290a7",
+      "name": "hook generator"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst hooks = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 3);\n\nreturn {\n  topic: $('rename topic').item.json.topic,\n  raw_hooks: raw,\n  hooks\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        0
+      ],
+      "id": "66d4922e-3847-421e-b381-1c2141c69919",
+      "name": "clean_hooks"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "hooks",
+        "include": "allOtherFields"
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "7016fae2-3ebd-49ab-89c0-d5d73c1f530c",
+      "name": "Split Hooks"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return {\n  topic: $json.topic,\n  hook: $json.hooks\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        0
+      ],
+      "id": "d984391c-1f01-409a-96b1-a08d2d8aac04",
+      "name": "rename_hook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/v1/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You write short-form relationship psychology scripts for TikTok, Reels, and Shorts. Output only the spoken script. Make it emotionally engaging, simple, natural, and easy to narrate. Use 5 to 7 short lines.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Topic: {{$json.topic}}\\\\nHook: {{$json.hook}}\\\\nWrite a 30-second spoken script in simple English. Start with the hook as the first line. Then explain the psychology clearly and end with a memorable closing line.\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 220\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2060,
+        0
+      ],
+      "id": "d26e7e34-ce1f-4389-b114-66de4fd13878",
+      "name": "script generator"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const script = $json.choices?.[0]?.message?.content || \"\";\n\nreturn {\n  topic: $('rename_hook').item.json.topic,\n  hook: $('rename_hook').item.json.hook,\n  script: script.trim()\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2280,
+        0
+      ],
+      "id": "424281e4-e21c-44ec-a28a-e78726c1aa35",
+      "name": "clean_scripts"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "function slugify(text) {\n  return text\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .trim()\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .slice(0, 60);\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn {\n  date: today,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: slugify($json.topic),\n  hook_slug: slugify($json.hook)\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        0
+      ],
+      "id": "327dd836-bfd3-4d54-9eb5-e33102da3f8f",
+      "name": "build_slug"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const filename = `${$json.date}_${$json.slug}_${$json.hook_slug}.json`;\n\nconst content = JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug\n}, null, 2);\n\nreturn {\n  json: {\n    filepath: `/home/node/.n8n/exports/scripts/${filename}`,\n    filename\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content).toString('base64'),\n      mimeType: 'application/json',\n      fileName: filename\n    }\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        0
+      ],
+      "id": "c7310560-7f8d-4284-9e10-0ed0dfde8c6a",
+      "name": "prepare_json_file"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "filePath": "={{$json.filepath}}",
+        "inputDataFieldName": "data"
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2940,
+        0
+      ],
+      "id": "a0091bec-3ed9-4e32-81ad-dac38623e122",
+      "name": "save_script_json"
+    }
+  ],
+  "connections": {
+    "manual trigger": {
+      "main": [
+        [
+          {
+            "node": "MLX generate topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MLX generate topic": {
+      "main": [
+        [
+          {
+            "node": "clean_topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean_topics": {
+      "main": [
+        [
+          {
+            "node": "Split Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Topics": {
+      "main": [
+        [
+          {
+            "node": "rename topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rename topic": {
+      "main": [
+        [
+          {
+            "node": "hook generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hook generator": {
+      "main": [
+        [
+          {
+            "node": "clean_hooks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean_hooks": {
+      "main": [
+        [
+          {
+            "node": "Split Hooks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Hooks": {
+      "main": [
+        [
+          {
+            "node": "rename_hook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "rename_hook": {
+      "main": [
+        [
+          {
+            "node": "script generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "script generator": {
+      "main": [
+        [
+          {
+            "node": "clean_scripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean_scripts": {
+      "main": [
+        [
+          {
+            "node": "build_slug",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_slug": {
+      "main": [
+        [
+          {
+            "node": "prepare_json_file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare_json_file": {
+      "main": [
+        [
+          {
+            "node": "save_script_json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {},
+  "versionId": "20413d69-e382-406d-919b-8d1474e76d1e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5699fcc293042d49471560caf3ac37e"
+  },
+  "id": "742e7ea2-5bc4-4eb8-b866-5d52f867b144",
+  "tags": []
+}

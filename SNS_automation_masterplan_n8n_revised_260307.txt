@@ -1,0 +1,905 @@
+OPENCLAW + N8N PROJECT CONTEXT
+AI SHORT-FORM CONTENT FACTORY
+MASTER PLAN (REVISED FOR N8N)
+
+--------------------------------------------------
+1. PROJECT GOAL
+--------------------------------------------------
+
+Build an automated AI short-form content system that is reliable enough to run daily with minimal manual work.
+
+This system should automatically:
+
+1) Collect or receive topic ideas
+2) Generate viral topics
+3) Generate hooks
+4) Generate scripts
+5) Generate voice (TTS)
+6) Generate subtitles
+7) Render short videos
+8) Queue uploads
+9) Publish videos to
+
+- TikTok
+- YouTube Shorts
+- Instagram Reels
+
+
+--------------------------------------------------
+2. CORE OPERATING PRINCIPLE
+--------------------------------------------------
+
+This project is no longer OpenClaw-only.
+
+The correct operating model is:
+
+OpenClaw = builder / experiment lab / dev helper
+n8n = runner / production pipeline / control tower
+MLX or local Qwen = cheap local text engine for routine generation
+GPT / Codex = premium reasoning, script improvement, coding, debugging
+ffmpeg = deterministic render engine
+ElevenLabs = production TTS
+
+Important principle:
+
+Deterministic workflow first.
+Agentic autonomy second.
+
+In other words:
+
+Do not use OpenClaw as the main always-on production runner.
+Use n8n as the main scheduler, router, queue manager, and execution controller.
+
+
+--------------------------------------------------
+3. CONTENT STRATEGY
+--------------------------------------------------
+
+Accounts: 3
+
+Account A
+Female podcast perspective
+
+Account B
+Male podcast perspective
+
+Account C
+Psychology narrator
+
+
+Content structure:
+
+1 topic -> 3 videos
+
+Female opinion
+Male opinion
+Psychology explanation
+
+
+--------------------------------------------------
+4. PRODUCTION TARGETS
+--------------------------------------------------
+
+Long-term target:
+
+5 topics per day
+
+Each topic -> 3 videos
+
+Total videos per day:
+
+15 videos
+
+Distribution:
+
+Each video uploaded to
+
+- TikTok
+- YouTube Shorts
+- Instagram Reels
+
+Total daily uploads:
+
+45 uploads
+
+
+Operational rollout target:
+
+Phase 1 stabilization:
+1 to 2 topics per day
+
+Phase 2 stable automation:
+3 topics per day
+
+Phase 3 full target:
+5 topics per day
+
+Do not jump to full-scale upload volume until rendering, upload retry, and reporting are stable.
+
+
+--------------------------------------------------
+5. UPDATED ARCHITECTURE
+--------------------------------------------------
+
+The architecture must now be split into two layers.
+
+LAYER A
+BUILD / DEV / EXPERIMENT LAYER
+
+Tools:
+- OpenClaw
+- GPT / Codex
+- local shell scripts
+- manual testing
+
+Purpose:
+- prompt design
+- content quality improvement
+- code generation
+- bug fixing
+- experimental workflows
+- emergency manual reruns
+
+
+LAYER B
+RUN / PRODUCTION / OPERATIONS LAYER
+
+Tools:
+- n8n
+- MLX local server
+- ElevenLabs API
+- ffmpeg
+- upload scripts / APIs
+- reports and retry logic
+
+Purpose:
+- scheduled execution
+- deterministic step-by-step processing
+- file movement
+- queue handling
+- publishing
+- monitoring
+- failure alerts
+
+
+--------------------------------------------------
+6. ROLE ASSIGNMENT
+--------------------------------------------------
+
+OpenClaw agents currently created:
+
+main
+fast
+ops
+content
+dev
+
+Updated role meaning:
+
+main
+= high-level orchestrator for planning only, not primary production runner
+
+ops
+= infrastructure troubleshooting, monitoring support, cron fallback, incident handling
+
+content
+= prompt design, batch generation experiments, hook/script quality improvement
+
+dev
+= coding, script creation, integration work, uploader implementation
+
+fast
+= quick draft generation, scratchpad, lightweight tests
+
+Important rule:
+
+Routine production should move from agent-driven execution to n8n workflow execution.
+
+
+--------------------------------------------------
+7. WHAT MUST BE KEPT FROM CURRENT WORK
+--------------------------------------------------
+
+Keep all existing completed work.
+
+Do not rebuild from zero.
+
+Existing assets to keep:
+
+1) OpenClaw workspace
+2) Remote access stack
+3) tmux workflow
+4) Existing topic / hook / script outputs
+5) Existing content strategy
+6) Existing pipeline scripts that are still reusable
+7) Existing cron jobs until n8n fully replaces them
+
+Current confirmed assets:
+
+- Tailscale
+- SSH
+- tmux
+- content_factory workspace
+- topics generated
+- hooks generated
+- scripts generated
+- daily-ops-report cron
+- hourly-failure-watch cron
+
+These are foundation assets, not throwaway experiments.
+
+
+--------------------------------------------------
+8. CURRENT WORKSPACE STRUCTURE
+--------------------------------------------------
+
+Current root:
+
+~/.openclaw/workspace/content_factory
+
+Updated target structure:
+
+content_factory/
+│
+├ topics
+├ hooks
+├ scripts
+├ audio
+├ subs
+├ videos
+│
+├ images
+│   ├ female_host
+│   ├ male_host
+│   └ psych_host
+│
+├ queue
+│   ├ pending
+│   ├ rendering
+│   ├ ready_to_upload
+│   ├ uploaded
+│   └ failed
+│
+├ logs
+│   ├ generation
+│   ├ render
+│   ├ upload
+│   └ n8n
+│
+├ reports
+│
+├ configs
+│   ├ platforms
+│   ├ mlx
+│   └ n8n
+│
+├ pipeline
+│   ├ factory_run_prompt.txt
+│   ├ VOICE_MAP.json
+│   ├ factory_render_all.sh
+│   ├ generate_audio.sh
+│   ├ generate_subtitles.sh
+│   ├ render_one_video.sh
+│   ├ enqueue_upload.sh
+│   └ publish_queue.sh
+│
+└ n8n
+    ├ workflows
+    ├ docs
+    └ credential_templates
+
+
+--------------------------------------------------
+9. CURRENT WORKING STATUS
+--------------------------------------------------
+
+Successfully generated already:
+
+- Topics
+- Hooks
+- Scripts
+
+Example files:
+
+topics/
+2026-03-06_topics.json
+
+hooks/
+2026-03-06_emotionally-unavailable-addictive_hooks.json
+
+scripts/
+2026-03-06_emotionally-unavailable-addictive_scripts.json
+
+This means ideation and writing are already partially working.
+
+The missing part is not content conception.
+The missing part is production execution and publishing automation.
+
+
+--------------------------------------------------
+10. REMOTE DEVELOPMENT ENVIRONMENT
+--------------------------------------------------
+
+Remote access is configured.
+
+Tailscale
+SSH
+tmux
+
+Connection from iPhone:
+
+ssh bigmac@100.x.x.x
+tmux attach -t ai
+
+This remains useful.
+
+Use remote access for:
+
+- debugging failed runs
+- checking logs
+- restarting local services
+- manual content review
+- emergency publishing
+
+
+--------------------------------------------------
+11. CRON VS N8N POLICY
+--------------------------------------------------
+
+Old system:
+cron handled scheduled automation.
+
+New policy:
+
+Use n8n as the default scheduler and execution controller.
+Keep cron only for:
+
+- machine boot tasks
+- service auto-start
+- watchdog fallback
+- ultra-simple health checks
+
+Configured jobs that may remain temporarily:
+
+- daily-ops-report
+- hourly-failure-watch
+
+Target state:
+
+Most business logic should live in n8n workflows, not scattered cron commands.
+
+
+--------------------------------------------------
+12. REQUIRED NEW COMPONENTS
+--------------------------------------------------
+
+To evolve the current system into a real production line, add the following:
+
+1) n8n self-hosted runner
+2) MLX local model server
+3) n8n workflow set
+4) file-based queue system
+5) ElevenLabs integration
+6) subtitle generation step
+7) ffmpeg render step
+8) upload queue and uploader scripts
+9) reporting and retry system
+10) secrets management cleanup
+
+
+--------------------------------------------------
+13. N8N RESPONSIBILITIES
+--------------------------------------------------
+
+n8n is the production control tower.
+
+n8n should handle:
+
+1) Triggering workflows by schedule
+2) Receiving manual commands from Telegram or webhook
+3) Calling MLX or GPT endpoints for text generation
+4) Calling shell scripts for TTS, subtitles, rendering, and publishing
+5) Moving files between queue folders
+6) Marking success / failure states
+7) Sending daily reports
+8) Sending failure alerts
+9) Retrying failed jobs safely
+
+n8n should NOT become the place where complex creative strategy is invented from scratch every run.
+That belongs to prompts, templates, and builder workflows.
+
+
+--------------------------------------------------
+14. MLX RESPONSIBILITIES
+--------------------------------------------------
+
+MLX local server should be used for:
+
+- topic expansion
+- hook draft generation
+- short script draft generation
+- classification
+- formatting
+- rewriting into structured JSON
+
+MLX should NOT be treated as a perfect production-grade public API.
+
+Use MLX as:
+
+- local internal engine
+- low-cost generator
+- speed layer for routine tasks
+
+Use GPT / Codex when:
+
+- script quality is weak
+- prompt structure changes
+- integration code is needed
+- debugging is complex
+- publishing logic breaks
+- higher quality copy is required
+
+
+--------------------------------------------------
+15. OPENCLAW RESPONSIBILITIES AFTER N8N MIGRATION
+--------------------------------------------------
+
+OpenClaw remains important, but its job changes.
+
+OpenClaw should now be used for:
+
+- designing prompts
+- generating or improving templates
+- code writing
+- workflow planning
+- ops troubleshooting
+- ad hoc batch content generation
+- experimentation with new content formats
+
+OpenClaw should not be the main repeating scheduler for the daily production line.
+
+Simple rule:
+
+OpenClaw builds the machine.
+n8n runs the machine.
+
+
+--------------------------------------------------
+16. SECURITY POLICY
+--------------------------------------------------
+
+Security rules for this project:
+
+1) Start with n8n accessible only inside local network or Tailscale
+2) Do not expose n8n publicly until authentication, HTTPS, secret handling, and routing are clean
+3) Keep MLX server local-only whenever possible
+4) Store API keys outside prompts and outside versioned workflow exports
+5) Use file permissions for secret files
+6) Separate credentials from content data
+7) Treat uploader credentials as production secrets
+
+Recommended secret locations:
+
+- ~/.openclaw/credentials
+- n8n credentials store
+- environment files
+- mounted secret files
+
+Never hardcode production keys inside prompts or shell scripts.
+
+
+--------------------------------------------------
+17. FILE NAMING STANDARD
+--------------------------------------------------
+
+Use one consistent naming convention.
+
+Format:
+
+YYYY-MM-DD_topic-slug_variant.ext
+
+Examples:
+
+2026-03-06_emotionally-unavailable-addictive_female.mp3
+2026-03-06_emotionally-unavailable-addictive_female.srt
+2026-03-06_emotionally-unavailable-addictive_female.mp4
+
+This naming standard must remain consistent across:
+
+- topics
+- hooks
+- scripts
+- audio
+- subtitles
+- videos
+- upload logs
+- reports
+
+
+--------------------------------------------------
+18. REQUIRED N8N WORKFLOWS
+--------------------------------------------------
+
+Minimum workflow set:
+
+WF01_topic_intake
+- Trigger: schedule or Telegram command
+- Result: daily topic list JSON
+
+WF02_hook_and_script_generation
+- Input: topic JSON
+- Engine: MLX first, GPT fallback when needed
+- Result: hook JSON + script JSON
+
+WF03_audio_generation
+- Input: approved scripts
+- Engine: ElevenLabs
+- Result: mp3 files
+
+WF04_subtitle_generation
+- Input: scripts or TTS transcript
+- Result: srt files
+
+WF05_video_render
+- Input: script + mp3 + srt + character image
+- Engine: ffmpeg via shell script
+- Result: mp4 files
+
+WF06_publish_queue_builder
+- Input: rendered mp4
+- Result: queue entries for platforms
+
+WF07_platform_uploader
+- Input: queue items
+- Result: upload attempt + success/fail log
+
+WF08_daily_report
+- Output: counts, failures, uploaded videos, pending items
+
+WF09_failure_watch_and_retry
+- Output: retries, alerts, failed item isolation
+
+
+--------------------------------------------------
+19. EXECUTION LOGIC
+--------------------------------------------------
+
+Target execution flow:
+
+Trigger
+↓
+Topic intake
+↓
+Hook generation
+↓
+Script generation
+↓
+Quality check / optional manual gate
+↓
+TTS generation
+↓
+Subtitle generation
+↓
+Render queue
+↓
+Video render
+↓
+Upload queue
+↓
+Publish
+↓
+Report
+
+Important:
+
+Every stage must write files and status markers.
+Do not rely only on in-memory workflow state.
+A failed run must be resumable from the last completed stage.
+
+
+--------------------------------------------------
+20. HUMAN REVIEW POLICY
+--------------------------------------------------
+
+Not every stage needs manual review.
+
+Manual review should exist at these points:
+
+1) New prompt format tests
+2) New niche tests
+3) New account voice tests
+4) First uploader rollout per platform
+5) Any workflow after repeated failures
+
+After a workflow proves stable, reduce human review.
+
+Goal:
+
+human-in-the-loop at the beginning
+human-on-the-loop after stabilization
+
+
+--------------------------------------------------
+21. IMPLEMENTATION ROADMAP
+--------------------------------------------------
+
+STEP 0
+FREEZE CURRENT WORKING ASSETS
+
+Do not delete current outputs.
+Back up:
+
+- topics
+- hooks
+- scripts
+- pipeline prompt files
+- existing shell scripts
+
+
+STEP 1
+INSTALL N8N AS THE RUNNER
+
+Target:
+- self-hosted n8n via Docker
+- internal-only access at first
+- reachable through local machine or Tailscale
+
+Goal:
+- one stable workflow runner
+- one place for schedule, retry, reporting, and queue logic
+
+
+STEP 2
+RUN MLX AS LOCAL TEXT SERVER
+
+Target:
+- local-only endpoint
+- used by n8n HTTP Request nodes
+- used for cheap routine generation
+
+Goal:
+- reduce paid API dependence for repetitive tasks
+
+
+STEP 3
+CONNECT N8N TO EXISTING CONTENT FACTORY
+
+n8n should call existing local scripts and write into:
+
+- topics
+- hooks
+- scripts
+- queue
+- logs
+
+Do not rebuild working pieces if they can be wrapped and reused.
+
+
+STEP 4
+ELEVENLABS VOICE GENERATION
+
+Create production audio from finished scripts.
+
+Output folder:
+
+content_factory/audio/
+
+Each script -> one voice file.
+
+VOICE_MAP.json remains a core config file.
+
+
+STEP 5
+SUBTITLE GENERATION
+
+Convert final script text into SRT subtitles.
+
+Output folder:
+
+content_factory/subs/
+
+Initial version can be sentence-split timing.
+Later version can use better word timing or alignment.
+
+
+STEP 6
+VIDEO RENDERING
+
+Use ffmpeg through deterministic shell scripts.
+
+Pipeline:
+
+script
++ voice
++ subtitles
++ image
+=
+video
+
+Output folder:
+
+content_factory/videos/
+
+
+STEP 7
+CHARACTER IMAGE LIBRARY
+
+Generate reusable image sets.
+
+Female podcast host
+30 images
+
+Male podcast host
+30 images
+
+Psychology narrator
+30 images
+
+Total images:
+90
+
+Saved to:
+
+images/female_host
+images/male_host
+images/psych_host
+
+These reusable assets allow hundreds of videos without new image generation every run.
+
+
+STEP 8
+UPLOAD QUEUE
+
+Before full auto-publish, create a queue-based upload layer.
+
+Each finished video should generate upload tasks for:
+
+- TikTok
+- YouTube Shorts
+- Instagram Reels
+
+Queue entries must track:
+
+- platform
+- file path
+- title
+- caption
+- hashtags
+- status
+- retry count
+- last error
+
+
+STEP 9
+PLATFORM UPLOADERS
+
+Future uploader modules may exist as scripts, APIs, or separate services.
+
+Names may still include:
+
+- tiktok_uploader
+- youtube_shorts_uploader
+- instagram_reels_uploader
+
+But in the new architecture they are execution units behind n8n, not primary orchestrators.
+
+
+STEP 10
+REPORTING + FAILURE RECOVERY
+
+Daily report should include:
+
+- topics generated
+- scripts generated
+- audio files generated
+- videos rendered
+- uploads completed
+- failures by stage
+- queue backlog
+
+A failed job should move to failed queue with reason, not disappear silently.
+
+
+--------------------------------------------------
+22. WHAT SHOULD BE REMOVED OR DOWNGRADED
+--------------------------------------------------
+
+The following ideas should be removed or downgraded:
+
+1) OpenClaw as the main always-on production scheduler
+2) Heavy reliance on agent autonomy for routine repeatable steps
+3) Public internet exposure of local tools at the beginning
+4) Scattered business logic across too many ad hoc shell commands
+5) Full-scale 45 uploads/day before the pipeline is stable
+
+These are not banned forever.
+They are simply wrong as the starting architecture.
+
+
+--------------------------------------------------
+23. TARGET FINAL PIPELINE
+--------------------------------------------------
+
+n8n schedule or Telegram trigger
+↓
+Topic intake
+↓
+MLX draft generation
+↓
+GPT / OpenClaw improvement when needed
+↓
+Script finalization
+↓
+ElevenLabs TTS
+↓
+Subtitle generation
+↓
+ffmpeg rendering
+↓
+Upload queue creation
+↓
+Platform upload workers
+↓
+Daily report and retry loop
+
+
+--------------------------------------------------
+24. SUCCESS MILESTONES
+--------------------------------------------------
+
+Milestone 1
+Existing scripts can automatically become audio + subtitles + videos
+
+Milestone 2
+One complete n8n workflow can generate and render without manual intervention
+
+Milestone 3
+At least one platform uploader works reliably from queue
+
+Milestone 4
+100 videos rendered and tracked without operational chaos
+
+Milestone 5
+300 videos published
+
+
+--------------------------------------------------
+25. MASTER RULES FOR THIS PROJECT
+--------------------------------------------------
+
+1) Reuse what already works
+2) Put repeatable logic into n8n
+3) Keep MLX local and cheap
+4) Use GPT / Codex only where quality or complexity justifies cost
+5) Keep secrets out of prompts
+6) Make every stage resumable
+7) Prefer queues over fragile one-shot execution
+8) Prefer stable output over clever architecture
+9) Keep builder tools separate from runner tools
+10) Speed matters, but recoverability matters more than elegance
+
+
+--------------------------------------------------
+26. FINAL STRATEGIC SUMMARY
+--------------------------------------------------
+
+This is not an OpenClaw-only content factory anymore.
+
+This is a hybrid automation system.
+
+OpenClaw builds and improves the system.
+n8n runs the system.
+MLX handles cheap local generation.
+GPT / Codex handles higher-value thinking and coding.
+ffmpeg renders.
+ElevenLabs voices.
+Queue-based publishing scales distribution.
+
+The machine should become more deterministic over time.
+
+Primary principle:
+
+Build once.
+Run daily.
+Recover safely.
+Scale only after stability.

@@ -1,0 +1,631 @@
+[
+  {
+    "updatedAt": "2026-03-15T04:57:26.986773Z",
+    "createdAt": "2026-03-15T04:57:26.986773Z",
+    "id": "cd5801bd2ab3449b",
+    "name": "WF01_final",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "aee00e3e-8e00-4e0b-81af-f6ef260660da",
+        "name": "manual trigger"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/v1/chat/completions",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\", \"messages\": [{\"role\": \"system\", \"content\": \"You are a viral dating and relationship psychology content strategist for TikTok and Reels. Output exactly 5 numbered topic lines only. Each line must be under 9 words, emotionally intense, natural, and curiosity-driven. Focus on attraction, attachment, mixed signals, texting, emotional unavailability, obsession, distance, respect, and relationship psychology. Do not use quotes. Do not ask questions. Do not add explanations.\"}, {\"role\": \"user\", \"content\": \"Generate 5 viral relationship psychology topics in this exact style:\\\\n1. Why emotionally unavailable people feel addictive\\\\n2. The texting habit that quietly kills attraction\\\\n3. Why mixed signals create obsession\\\\n4. The mistake that makes people lose respect\\\\n5. Why being too available lowers attraction\"}], \"temperature\": 0.7, \"max_tokens\": 90}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          220,
+          0
+        ],
+        "id": "bd1fbe73-0cf8-446a-9c27-3bf359ef80f2",
+        "name": "MLX generate topic"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst topics = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 5);\n\nreturn [{ json: { raw, topics } }];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          0
+        ],
+        "id": "67d8e9dc-e32d-46c6-8506-88723c14d9c3",
+        "name": "clean_topics"
+      },
+      {
+        "parameters": {
+          "fieldToSplitOut": "topics",
+          "include": "allOtherFields"
+        },
+        "type": "n8n-nodes-base.splitOut",
+        "typeVersion": 1,
+        "position": [
+          680,
+          0
+        ],
+        "id": "2ac6bdda-faca-4b85-a16f-f30f8a7092b2",
+        "name": "Split Topics"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "return { topic: $json.topics };\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          900,
+          0
+        ],
+        "id": "15b2b262-ee0e-489a-be96-84e302952a1d",
+        "name": "rename topic"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/v1/chat/completions",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\", \"messages\": [{\"role\": \"system\", \"content\": \"You write viral short-form hooks for dating psychology videos. Use the exact topic provided. Output exactly 3 numbered hooks. Each hook must be under 12 words, natural, emotionally sharp, and directly related to the topic. Avoid generic dating advice. Avoid broad questions. Do not mention unrelated ideas.\"}, {\"role\": \"user\", \"content\": \"Topic: {{$json.topic}}\\\\nWrite 3 hooks that stay tightly focused on this exact topic.\\\\nMatch this style:\\\\n1. The real reason he suddenly pulls away\\\\n2. Why this texting habit kills attraction\\\\n3. The mistake that makes people lose respect\"}], \"temperature\": 0.7, \"max_tokens\": 90}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1140,
+          0
+        ],
+        "id": "88a80fad-20de-495b-ae8b-289d8a6290a7",
+        "name": "hook generator"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const raw = $json.choices?.[0]?.message?.content || \"\";\n\nconst hooks = raw\n  .split(\"\\n\")\n  .map(line => line.trim())\n  .filter(line => line)\n  .map(line => line.replace(/^\\d+[\\.\\)]\\s*/, \"\").trim())\n  .filter(line => line.length > 0)\n  .slice(0, 3);\n\nreturn {\n  topic: $('rename topic').item.json.topic,\n  raw_hooks: raw,\n  hooks\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1380,
+          0
+        ],
+        "id": "66d4922e-3847-421e-b381-1c2141c69919",
+        "name": "clean_hooks"
+      },
+      {
+        "parameters": {
+          "fieldToSplitOut": "hooks",
+          "include": "allOtherFields"
+        },
+        "type": "n8n-nodes-base.splitOut",
+        "typeVersion": 1,
+        "position": [
+          1600,
+          0
+        ],
+        "id": "7016fae2-3ebd-49ab-89c0-d5d73c1f530c",
+        "name": "Split Hooks"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "return { topic: $json.topic, hook: $json.hooks };\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1820,
+          0
+        ],
+        "id": "d984391c-1f01-409a-96b1-a08d2d8aac04",
+        "name": "rename_hook"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8000/v1/chat/completions",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{\"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\", \"messages\": [{\"role\": \"system\", \"content\": \"You write short-form relationship psychology scripts for TikTok, Reels, and Shorts. Output only the spoken script. Make it emotionally engaging, simple, natural, and easy to narrate. Use 5 to 7 short lines.\"}, {\"role\": \"user\", \"content\": \"Topic: {{$json.topic}}\\\\nHook: {{$json.hook}}\\\\nWrite a 30-second spoken script in simple English. Start with the hook as the first line. Then explain the psychology clearly and end with a memorable closing line.\"}], \"temperature\": 0.7, \"max_tokens\": 220}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          2060,
+          0
+        ],
+        "id": "d26e7e34-ce1f-4389-b114-66de4fd13878",
+        "name": "script generator"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const script = $json.choices?.[0]?.message?.content || \"\";\n\nreturn {\n  topic: $('rename_hook').item.json.topic,\n  hook: $('rename_hook').item.json.hook,\n  script: script.trim()\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2280,
+          0
+        ],
+        "id": "424281e4-e21c-44ec-a28a-e78726c1aa35",
+        "name": "clean_scripts"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "function slugify(text) {\n  return text\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .trim()\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .slice(0, 60);\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn {\n  date: today,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: slugify($json.topic),\n  hook_slug: slugify($json.hook)\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2500,
+          0
+        ],
+        "id": "327dd836-bfd3-4d54-9eb5-e33102da3f8f",
+        "name": "build_slug"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst filename = `${$json.date}_${$json.slug}_${$json.hook_slug}.json`;\nconst filepath = `/files/scripts/${filename}`;\nconst dir = path.dirname(filepath);\n\nif (!fs.existsSync(dir)) {\n  fs.mkdirSync(dir, { recursive: true });\n}\n\nconst content = JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug\n}, null, 2);\n\nfs.writeFileSync(filepath, content, 'utf8');\n\nreturn {\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  script_file: filepath\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2720,
+          0
+        ],
+        "id": "c7310560-7f8d-4284-9e10-0ed0dfde8c6a",
+        "name": "save_script_json"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const voiceMap = {\n  female: { voice: 'en-US-JennyNeural', image_dir: 'female_host' },\n  male: { voice: 'en-US-GuyNeural', image_dir: 'male_host' },\n  psych: { voice: 'en-US-AriaNeural', image_dir: 'psych_host' }\n};\n\nreturn $input.all().flatMap(item =>\n  Object.entries(voiceMap).map(([variant, config]) => ({\n    date: item.json.date,\n    topic: item.json.topic,\n    hook: item.json.hook,\n    script: item.json.script,\n    slug: item.json.slug,\n    hook_slug: item.json.hook_slug,\n    script_file: item.json.script_file,\n    variant,\n    voice: config.voice,\n    voice_id: config.voice,\n    image_dir: config.image_dir\n  }))\n);\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2940,
+          0
+        ],
+        "id": "a1b2c3d4-0001-0001-0001-000000000001",
+        "name": "assign_variants"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst baseName = `${$json.date}_${$json.slug}_${$json.hook_slug}_${$json.variant}`;\nconst queueDir = '/files/queue/pending';\nconst queueFile = `${queueDir}/${baseName}.json`;\n\nif (!fs.existsSync(queueDir)) {\n  fs.mkdirSync(queueDir, { recursive: true });\n}\n\nconst payload = {\n  job_id: baseName,\n  created_at: new Date().toISOString(),\n  updated_at: new Date().toISOString(),\n  status: 'pending',\n  retry_count: 0,\n  last_error: null,\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  variant: $json.variant,\n  voice: $json.voice,\n  script_file: $json.script_file\n};\n\nfs.writeFileSync(queueFile, JSON.stringify(payload, null, 2), 'utf8');\n\nreturn {\n  ...$json,\n  base_name: baseName,\n  queue_file: queueFile\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3160,
+          0
+        ],
+        "id": "70788d91-cd79-4a29-960f-caff233281bf",
+        "name": "prepare_variant_job"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8010/tts",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  variant: $json.variant,\n  voice: $json.voice,\n  script_file: $json.script_file,\n  base_name: $json.base_name,\n  queue_file: $json.queue_file\n}) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          3380,
+          0
+        ],
+        "id": "bce6c145-23ff-4618-8e72-19d3f68eade2",
+        "name": "edge_tts_generate"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "if (!$json.success || !$json.audio_file) {\n  return [];\n}\n\nreturn {\n  ...$json,\n  stage: 'audio_ready'\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3600,
+          0
+        ],
+        "id": "0edf480d-de20-4695-a3b7-d5128edd7bf9",
+        "name": "save_audio"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "if (!$json.srt_file) {\n  return [];\n}\n\nreturn {\n  ...$json,\n  stage: 'subtitles_ready'\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3820,
+          0
+        ],
+        "id": "80ac1d2b-a8da-4fbb-9134-caf9efc6fb76",
+        "name": "generate_srt"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8010/render",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  variant: $json.variant,\n  voice: $json.voice,\n  base_name: $json.base_name,\n  queue_file: $json.queue_file,\n  audio_file: $json.audio_file,\n  srt_file: $json.srt_file,\n  duration_seconds: $json.duration_seconds\n}) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          4040,
+          0
+        ],
+        "id": "76495e04-fb89-41bb-8195-f94b3559dc5a",
+        "name": "render_video"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "if (!$json.success || !$json.video_file) {\n  return [];\n}\n\nreturn {\n  ...$json,\n  stage: 'video_ready'\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4260,
+          0
+        ],
+        "id": "41802cea-5d0f-464e-90cb-2fe8e28f5fa7",
+        "name": "validate_render"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://host.docker.internal:8010/enqueue_upload",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  variant: $json.variant,\n  voice: $json.voice,\n  base_name: $json.base_name,\n  queue_file: $json.queue_file,\n  video_file: $json.video_file\n}) }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          4480,
+          0
+        ],
+        "id": "7c1ebb22-3599-49d7-9e9b-6f16dbe2395e",
+        "name": "build_upload_queue"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "if (!$json.success || !$json.upload_tasks || !$json.upload_tasks.length) {\n  return [];\n}\n\nreturn {\n  ...$json,\n  upload_task_count: $json.upload_tasks.length,\n  stage: 'ready_to_upload'\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4700,
+          0
+        ],
+        "id": "3f909f93-6abd-4be6-9e3d-bb6cf987d561",
+        "name": "validate_upload_queue"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "language": "javaScript",
+          "jsCode": "const fs = require('fs');\n\nconst logDir = '/files/logs/generation';\nif (!fs.existsSync(logDir)) {\n  fs.mkdirSync(logDir, { recursive: true });\n}\n\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  status: 'ready_to_upload',\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  variant: $json.variant,\n  voice: $json.voice,\n  script_file: $json.script_file,\n  audio_file: $json.audio_file,\n  srt_file: $json.srt_file,\n  video_file: $json.video_file,\n  queue_file: $json.queue_file,\n  upload_task_count: $json.upload_task_count\n};\n\nconst logFile = `${logDir}/${$json.date}_generation.log`;\nfs.appendFileSync(logFile, JSON.stringify(logEntry) + '\\n', 'utf8');\n\nreturn {\n  success: true,\n  status: 'ready_to_upload',\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  variant: $json.variant,\n  audio_file: $json.audio_file,\n  srt_file: $json.srt_file,\n  video_file: $json.video_file,\n  queue_file: $json.queue_file,\n  upload_task_count: $json.upload_task_count\n};\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4920,
+          0
+        ],
+        "id": "de860ec9-8338-4d55-8f94-c740cf12eec5",
+        "name": "log_completion"
+      }
+    ],
+    "connections": {
+      "manual trigger": {
+        "main": [
+          [
+            {
+              "node": "MLX generate topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "MLX generate topic": {
+        "main": [
+          [
+            {
+              "node": "clean_topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "clean_topics": {
+        "main": [
+          [
+            {
+              "node": "Split Topics",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Topics": {
+        "main": [
+          [
+            {
+              "node": "rename topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "rename topic": {
+        "main": [
+          [
+            {
+              "node": "hook generator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "hook generator": {
+        "main": [
+          [
+            {
+              "node": "clean_hooks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "clean_hooks": {
+        "main": [
+          [
+            {
+              "node": "Split Hooks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split Hooks": {
+        "main": [
+          [
+            {
+              "node": "rename_hook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "rename_hook": {
+        "main": [
+          [
+            {
+              "node": "script generator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "script generator": {
+        "main": [
+          [
+            {
+              "node": "clean_scripts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "clean_scripts": {
+        "main": [
+          [
+            {
+              "node": "build_slug",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_slug": {
+        "main": [
+          [
+            {
+              "node": "save_script_json",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_script_json": {
+        "main": [
+          [
+            {
+              "node": "assign_variants",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "assign_variants": {
+        "main": [
+          [
+            {
+              "node": "prepare_variant_job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_audio": {
+        "main": [
+          [
+            {
+              "node": "generate_srt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "generate_srt": {
+        "main": [
+          [
+            {
+              "node": "render_video",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "prepare_variant_job": {
+        "main": [
+          [
+            {
+              "node": "edge_tts_generate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "edge_tts_generate": {
+        "main": [
+          [
+            {
+              "node": "save_audio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "render_video": {
+        "main": [
+          [
+            {
+              "node": "validate_render",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "validate_render": {
+        "main": [
+          [
+            {
+              "node": "build_upload_queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_upload_queue": {
+        "main": [
+          [
+            {
+              "node": "validate_upload_queue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "validate_upload_queue": {
+        "main": [
+          [
+            {
+              "node": "log_completion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {},
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "c5699fcc293042d49471560caf3ac37e"
+    },
+    "pinData": {},
+    "versionId": "ec67856a-8a61-419c-975c-fa8ab4778eba",
+    "activeVersionId": null,
+    "versionCounter": 1,
+    "triggerCount": 0,
+    "tags": [],
+    "shared": [],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

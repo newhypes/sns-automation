@@ -1,0 +1,385 @@
+SNS 자동화 1차 워크플로 확정본
+업데이트: 2026-03-07
+
+==================================================
+1. 1차 워크플로 핵심 결론
+==================================================
+
+1차 워크플로는 아래 순서로 고정한다.
+
+n8n Docker 설치
+→ MLX 로컬 서버 연결
+→ topic / hook / script 생성
+→ TTS
+→ subtitle
+→ render
+
+이 순서는 맞다.
+
+이유는 현재 시스템에서 이미 topic / hook / script 생성은 부분적으로 작동하고 있고,
+부족한 것은 production execution, 후반 처리, 그리고 자동화 연결이기 때문이다.
+따라서 처음부터 업로더까지 욕심내지 말고,
+먼저 n8n이 end-to-end로 "생성 → 음성 → 자막 → 렌더" 를 안정적으로 돌리게 만드는 것이 우선이다.
+
+==================================================
+2. 이번 1차 워크플로의 목표
+==================================================
+
+목표는 "업로드 전 단계까지 완전 자동화"다.
+
+즉, 이번 단계에서 반드시 되는 상태는 아래다.
+
+- n8n이 Docker 위에서 실행된다
+- n8n이 MLX 로컬 엔드포인트를 호출할 수 있다
+- n8n이 topic / hook / script JSON을 생성한다
+- n8n이 완성된 script를 TTS로 mp3로 만든다
+- n8n이 script 또는 transcript를 srt로 만든다
+- n8n이 ffmpeg 렌더 스크립트를 호출해 mp4를 만든다
+- 각 단계 결과물이 파일로 남고, 실패 시 어디서 멈췄는지 확인 가능하다
+
+이번 단계에서 굳이 끝내지 않아도 되는 것은 아래다.
+
+- TikTok / YouTube Shorts / Instagram Reels 업로드 자동화
+- 정교한 재시도 시스템
+- 고급 분석 리포트
+- 대규모 일일 45업로드
+- 공개 인터넷 노출
+
+==================================================
+3. 운영 원칙
+==================================================
+
+1) OpenClaw는 builder다
+- 프롬프트 설계
+- 코드 작성
+- 디버깅
+- 템플릿 개선
+
+2) n8n은 runner다
+- 스케줄 실행
+- 단계 연결
+- 파일 이동
+- 상태 기록
+- 실패 감지
+
+3) MLX는 로컬 저비용 생성 엔진이다
+- topic 확장
+- hook 초안
+- script 초안
+- JSON 구조화
+
+4) TTS / subtitle / render는 가능한 한 결정론적으로 만든다
+- shell script 기반
+- 파일 기반
+- 재실행 가능
+
+5) 모든 단계는 메모리가 아니라 파일을 남겨야 한다
+- 그래야 실패 복구가 쉽다
+
+==================================================
+4. 1차 워크플로 범위
+==================================================
+
+워크플로 이름 제안:
+WF01_phase1_generate_to_render
+
+실행 흐름:
+
+Trigger
+→ Topic generation
+→ Hook generation
+→ Script generation
+→ TTS generation
+→ Subtitle generation
+→ Render
+→ Output summary
+
+이번 1차 워크플로는 "Publish 이전"까지만 책임진다.
+
+==================================================
+5. 단계별 구현 순서
+==================================================
+
+STEP 0. 현재 산출물 보존
+
+절대 기존 산출물을 지우지 않는다.
+보존 대상:
+- topics
+- hooks
+- scripts
+- pipeline prompt files
+- 기존 shell scripts
+
+핵심 원칙:
+이미 되는 것을 다시 만들지 말고 감싸서 재사용한다.
+
+
+STEP 1. n8n Docker 설치
+
+목표:
+- self-hosted n8n을 Docker로 실행
+- 최초에는 로컬 또는 Tailscale 내부에서만 접근
+- 스케줄 / 수동 트리거 / 로그 확인이 가능한 상태 만들기
+
+역할:
+- 전체 1차 워크플로의 컨트롤 타워
+
+최소 요구 상태:
+- n8n 접속 가능
+- workflow 생성 가능
+- Execute Command / HTTP Request / Code 노드 사용 가능
+
+
+STEP 2. MLX 로컬 서버 연결
+
+목표:
+- 로컬 전용 텍스트 생성 엔드포인트 확보
+- n8n HTTP Request 노드에서 호출 가능하게 만들기
+
+역할:
+- topic 생성 또는 topic 확장
+- hook 생성
+- script 초안 생성
+- JSON 포맷 정리
+
+원칙:
+- routine generation은 MLX 우선
+- 품질이 약한 경우에만 GPT / Codex 보조
+
+
+STEP 3. topic / hook / script 생성 연결
+
+목표:
+- 하나의 트리거로 topic → hook → script까지 자동 생성
+- 결과를 파일로 저장
+
+입력:
+- 수동 trigger 또는 schedule trigger
+- niche / tone / 계정 타입 / topic count
+
+출력:
+- topics/*.json
+- hooks/*.json
+- scripts/*.json
+
+권장 방식:
+- 가능하면 기존 content_factory 구조를 그대로 사용
+- n8n이 기존 로컬 스크립트를 감싸 호출하거나,
+  MLX 응답을 바로 JSON 파일로 저장하도록 설계
+
+이번 단계에서 중요한 점:
+- 1 topic -> 3 variants 구조를 유지하되
+- 처음에는 1~2 topics/day 수준으로 안정화 우선
+
+
+STEP 4. TTS 단계 연결
+
+목표:
+- 최종 script를 mp3로 변환
+
+입력:
+- scripts/*.json
+- VOICE_MAP.json
+
+출력:
+- audio/*.mp3
+
+원칙:
+- voice selection은 캐릭터별 고정 매핑
+- 파일명은 topic slug + variant 기준으로 통일
+- 실패 시 어느 script에서 실패했는지 로그가 남아야 함
+
+권장 구조:
+- n8n -> Execute Command -> generate_audio.sh
+또는
+- n8n -> HTTP Request -> TTS API -> Write Binary File
+
+
+STEP 5. subtitle 단계 연결
+
+목표:
+- script 또는 transcript를 srt로 변환
+
+입력:
+- scripts/*.json 또는 TTS용 transcript
+
+출력:
+- subs/*.srt
+
+초기 버전 원칙:
+- sentence-split timing으로 먼저 시작
+- 완벽한 word-level alignment는 2차 개선 항목으로 미룸
+
+중요:
+- subtitle 생성은 반드시 render 전에 완료되어야 함
+- audio 길이와 subtitle 타이밍이 심하게 어긋나지 않도록 최소 검증 필요
+
+
+STEP 6. render 단계 연결
+
+목표:
+- script + voice + subtitle + image를 합쳐 mp4 생성
+
+입력:
+- scripts/*.json
+- audio/*.mp3
+- subs/*.srt
+- images/*
+
+출력:
+- videos/*.mp4
+
+엔진:
+- ffmpeg
+- deterministic shell script
+
+원칙:
+- n8n은 render를 직접 복잡하게 만들지 말고 shell script를 호출하는 오케스트레이터 역할만 한다
+- 렌더 실패 시 재실행 가능해야 한다
+- intermediate file 또는 상태 마커를 남기면 좋다
+
+==================================================
+6. 권장 폴더 구조
+==================================================
+
+~/.openclaw/workspace/content_factory/
+
+하위 권장 구조:
+- topics/
+- hooks/
+- scripts/
+- audio/
+- subs/
+- videos/
+- images/
+  - female_host/
+  - male_host/
+  - psych_host/
+- logs/
+  - generation/
+  - render/
+  - n8n/
+- queue/
+  - pending/
+  - rendering/
+  - ready_to_upload/
+  - uploaded/
+  - failed/
+- configs/
+  - mlx/
+  - n8n/
+- pipeline/
+  - factory_run_prompt.txt
+  - VOICE_MAP.json
+  - generate_audio.sh
+  - generate_subtitles.sh
+  - render_one_video.sh
+  - factory_render_all.sh
+- n8n/
+  - workflows/
+  - docs/
+  - credential_templates/
+
+==================================================
+7. 파일명 규칙
+==================================================
+
+형식:
+YYYY-MM-DD_topic-slug_variant.ext
+
+예시:
+2026-03-07_attachment-anxiety_female.json
+2026-03-07_attachment-anxiety_female.mp3
+2026-03-07_attachment-anxiety_female.srt
+2026-03-07_attachment-anxiety_female.mp4
+
+규칙:
+- topics, hooks, scripts, audio, subs, videos 모두 같은 slug 체계를 사용
+- 그래야 n8n에서 다음 파일을 찾기 쉽다
+
+==================================================
+8. n8n 노드 레벨 최소 설계
+==================================================
+
+권장 최소 노드 흐름:
+
+1) Manual Trigger 또는 Schedule Trigger
+2) Set / Code 노드: 실행 파라미터 정의
+3) HTTP Request: MLX topic 생성
+4) Code: topic JSON 정리
+5) HTTP Request: MLX hook 생성
+6) Code: hook JSON 정리
+7) HTTP Request: MLX script 생성
+8) Code: script JSON 저장용 구조 정리
+9) Execute Command 또는 파일 저장 로직: scripts 기록
+10) Execute Command: generate_audio.sh
+11) Execute Command: generate_subtitles.sh
+12) Execute Command: render_one_video.sh 또는 factory_render_all.sh
+13) Code: 실행 결과 요약 JSON 작성
+14) Slack / Telegram / log file 알림은 나중에 붙여도 됨
+
+핵심:
+복잡한 창작 로직은 prompt/template에 넣고,
+n8n에는 연결과 상태 처리 중심으로 둔다.
+
+==================================================
+9. 이번 단계의 성공 기준
+==================================================
+
+1차 워크플로 성공 기준은 아래다.
+
+성공 기준 A
+- n8n에서 버튼 한 번 또는 schedule 한 번으로 실행된다
+
+성공 기준 B
+- 최소 1 topic에 대해 3개 variant script가 나온다
+
+성공 기준 C
+- 그 3개 variant가 mp3, srt, mp4까지 전부 생성된다
+
+성공 기준 D
+- 실패 시 어느 단계에서 멈췄는지 로그 또는 파일 기준으로 알 수 있다
+
+성공 기준 E
+- 같은 입력으로 재실행했을 때 사람이 감당 가능한 수준으로 안정적이다
+
+==================================================
+10. 이번 단계에서 하지 말아야 할 것
+==================================================
+
+- 처음부터 45 uploads/day 목표로 밀어붙이기
+- uploader까지 한 번에 붙이기
+- n8n을 공개 인터넷에 바로 노출하기
+- 기존 working scripts를 전부 새로 짜기
+- agent autonomy에 과하게 의존하기
+- 모든 걸 한 workflow에 과도하게 우겨 넣기
+
+==================================================
+11. 추천 실행 순서 요약
+==================================================
+
+가장 현실적인 시작 순서는 다시 정리하면 아래다.
+
+1) n8n Docker 설치
+2) MLX 로컬 서버 연결 확인
+3) topic / hook / script 자동 생성 workflow 완성
+4) TTS 연결
+5) subtitle 연결
+6) render 연결
+7) render 결과 안정화 후 upload queue 단계로 확장
+
+즉,
+지금의 정답은
+"n8n Docker 설치 → MLX 로컬 서버 연결 → topic/hook/script → TTS → subtitle → render"
+이 순서로 1차 워크플로를 시작하는 것이다.
+
+==================================================
+12. 최종 한 줄 원칙
+==================================================
+
+이번 1차 목표는
+"n8n이 로컬 MLX와 기존 content_factory를 연결해서,
+하나의 trigger로 script부터 mp4까지 안정적으로 만드는 것"
+이다.
+
+업로드는 그 다음 단계다.
