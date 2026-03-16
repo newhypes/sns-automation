@@ -21,6 +21,7 @@ generate_gradient() {
   ffmpeg -y \
     -f lavfi -i "nullsrc=s=1080x1920,geq=r='lerp(lerp(${color_a%%,*},${color_b%%,*},${x_expr}),${color_c%%,*},${y_expr})':g='lerp(lerp(${color_a#*,},${color_b#*,},${x_expr}),${color_c#*,},${y_expr})':b='lerp(lerp(${color_a##*,},${color_b##*,},${x_expr}),${color_c##*,},${y_expr})'" \
     -frames:v 1 \
+    -update 1 \
     "$output_path" \
     >/dev/null 2>&1
 }
