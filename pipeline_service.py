@@ -25,6 +25,7 @@ DEFAULT_PORT = 8010
 VIDEO_SIZE = (1080, 1920)
 VIDEO_FPS = 30
 SENTENCE_END_RE = re.compile(r"""[.!?]["')\]]*$""")
+SUBTITLE_LABEL_RE = re.compile(r"^\s*(hook|script)\s*:\s*", re.IGNORECASE)
 
 VOICE_MAP = {
     "female": {
@@ -290,30 +291,55 @@ def find_font_path() -> Path:
     raise FileNotFoundError("No supported TTF font found for subtitle rendering")
 
 
-def sentence_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def sanitize_subtitle_text(text: str) -> str:
+    cleaned = " ".join(text.split())
+    cleaned = SUBTITLE_LABEL_RE.sub("", cleaned)
+    cleaned = cleaned.strip().strip('"').strip("'").strip()
+    return cleaned
+
+
+def split_subtitle_text(text: str, max_words: int = 6, max_chars: int = 34) -> list[str]:
+    words = text.split()
+    if not words:
+        return []
+
+    chunks: list[str] = []
+    current: list[str] = []
+    for word in words:
+        trial = " ".join(current + [word]).strip()
+        if current and (len(current) >= max_words or len(trial) > max_chars):
+            chunks.append(" ".join(current))
+            current = [word]
+        else:
+            current.append(word)
+
+    if current:
+        chunks.append(" ".join(current))
+
+    return chunks
+
+
+def subtitle_display_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     segments: list[dict[str, Any]] = []
-    buffer_text: list[str] = []
-    start_time: float | None = None
-    end_time: float | None = None
 
     for entry in entries:
-        text = " ".join(str(entry["text"]).split())
+        text = sanitize_subtitle_text(str(entry["text"]))
         if not text:
             continue
-        if start_time is None:
-            start_time = float(entry["start"])
-        end_time = float(entry["end"])
-        buffer_text.append(text)
-        combined = " ".join(buffer_text).strip()
 
-        if SENTENCE_END_RE.search(text) or len(combined.split()) >= 18:
-            segments.append({"start": start_time, "end": end_time, "text": combined})
-            buffer_text = []
-            start_time = None
-            end_time = None
+        chunks = split_subtitle_text(text)
+        if not chunks:
+            continue
 
-    if buffer_text and start_time is not None and end_time is not None:
-        segments.append({"start": start_time, "end": end_time, "text": " ".join(buffer_text).strip()})
+        start = float(entry["start"])
+        end = float(entry["end"])
+        total_duration = max(0.1, end - start)
+        chunk_duration = total_duration / len(chunks)
+
+        for index, chunk in enumerate(chunks):
+            chunk_start = start + (chunk_duration * index)
+            chunk_end = end if index == len(chunks) - 1 else start + (chunk_duration * (index + 1))
+            segments.append({"start": chunk_start, "end": chunk_end, "text": chunk})
 
     return segments or entries
 
@@ -354,11 +380,11 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
                 [
                     "Default",
                     "Arial",
-                    "74",
+                    "68",
                     ass_color("#FFFFFF"),
                     ass_color("#FFFFFF"),
                     ass_color("#000000"),
-                    ass_color("#000000", "A0"),
+                    ass_color("#000000", "FF"),
                     "-1",
                     "0",
                     "0",
@@ -368,12 +394,12 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
                     "0",
                     "0",
                     "1",
-                    "5",
+                    "6",
                     "0",
                     "2",
-                    "90",
-                    "90",
-                    "180",
+                    "80",
+                    "80",
+                    "145",
                     "1",
                 ]
             ),
@@ -389,21 +415,14 @@ def build_ass_subtitles(segments: list[dict[str, Any]], destination: Path) -> No
     destination.write_text(style_block + "\n" + "\n".join(events) + "\n", encoding="utf-8")
 
 
-def wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
-    words = text.split()
-    lines: list[str] = []
-    current = ""
-    for word in words:
-        trial = f"{current} {word}".strip()
-        width = draw.textbbox((0, 0), trial, font=font)[2]
-        if current and width > max_width:
-            lines.append(current)
-            current = word
-        else:
-            current = trial
-    if current:
-        lines.append(current)
-    return lines or [text]
+def fit_subtitle_font(draw: ImageDraw.ImageDraw, text: str, max_width: int) -> ImageFont.FreeTypeFont:
+    font_path = str(find_font_path())
+    for size in range(72, 47, -2):
+        font = ImageFont.truetype(font_path, size)
+        bbox = draw.textbbox((0, 0), text, font=font, stroke_width=8)
+        if (bbox[2] - bbox[0]) <= max_width:
+            return font
+    return ImageFont.truetype(font_path, 48)
 
 
 def render_subtitle_frame(
@@ -413,33 +432,20 @@ def render_subtitle_frame(
 ) -> None:
     overlay = Image.new("RGBA", VIDEO_SIZE, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    font = ImageFont.truetype(str(find_font_path()), 78)
-    wrapped = wrap_text(draw, text, font, max_width=900)
-    line_height = 98
-    text_height = line_height * len(wrapped)
-    padding_y = 42
-    padding_x = 40
-    block_height = text_height + (padding_y * 2)
-    box_top = VIDEO_SIZE[1] - block_height - 170
-
-    widest_line = max((draw.textbbox((0, 0), line, font=font, stroke_width=8)[2] for line in wrapped), default=0)
-    box_left = max(70, int((VIDEO_SIZE[0] - widest_line) / 2) - padding_x)
-    box_right = min(VIDEO_SIZE[0] - 70, int((VIDEO_SIZE[0] + widest_line) / 2) + padding_x)
-    draw.rounded_rectangle((box_left, box_top, box_right, box_top + block_height), radius=40, fill=(0, 0, 0, 118))
-
-    y = box_top + padding_y
-    for line in wrapped:
-        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=8)
-        x = int((VIDEO_SIZE[0] - (bbox[2] - bbox[0])) / 2)
-        draw.text(
-            (x, y),
-            line,
-            font=font,
-            fill=(255, 255, 255, 255),
-            stroke_width=8,
-            stroke_fill=(0, 0, 0, 255),
-        )
-        y += line_height
+    font = fit_subtitle_font(draw, text, max_width=980)
+    bbox = draw.textbbox((0, 0), text, font=font, stroke_width=8)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = int((VIDEO_SIZE[0] - text_width) / 2)
+    y = VIDEO_SIZE[1] - text_height - 170
+    draw.text(
+        (x, y),
+        text,
+        font=font,
+        fill=(255, 255, 255, 255),
+        stroke_width=8,
+        stroke_fill=(0, 0, 0, 255),
+    )
 
     overlay.save(destination, format="PNG")
 
@@ -554,7 +560,7 @@ def render_video_from_srt(
     asset_path: Path | None,
     asset_type: str,
 ) -> str:
-    entries = sentence_entries(parse_srt(srt_host))
+    entries = subtitle_display_entries(parse_srt(srt_host))
     if not entries:
         raise RuntimeError("No subtitle entries were parsed from SRT")
 
