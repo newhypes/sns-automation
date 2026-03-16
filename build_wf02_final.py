@@ -31,6 +31,42 @@ def upsert_node(nodes, new_node):
     nodes.append(new_node)
 
 
+def make_upload_log_node(name, position, platform):
+    return make_node(
+        name,
+        "n8n-nodes-base.code",
+        position,
+        {
+            "mode": "runOnceForEachItem",
+            "language": "javaScript",
+            "jsCode": f"""const fs = require('fs');
+
+const logDir = '/files/logs/upload';
+if (!fs.existsSync(logDir)) {{
+  fs.mkdirSync(logDir, {{ recursive: true }});
+}}
+
+const date = $json.date || new Date().toISOString().slice(0, 10);
+const logEntry = {{
+  timestamp: new Date().toISOString(),
+  platform: '{platform}',
+  success: Boolean($json.success),
+  upload_status: $json.upload_status || null,
+  message: $json.message || $json.error || null,
+  task_file: $json.task_file || null,
+  queue_file: $json.queue_file || null,
+  base_name: $json.base_name || null,
+  video_file: $json.video_file || null
+}};
+
+fs.appendFileSync(`${{logDir}}/${{date}}_n8n_upload.log`, JSON.stringify(logEntry) + '\\n', 'utf8');
+return $json;
+""",
+        },
+        type_version=2,
+    )
+
+
 def main() -> None:
     workflow = json.loads(SOURCE_WORKFLOW.read_text(encoding="utf-8"))
     workflow["name"] = "WF02_final"
@@ -235,6 +271,10 @@ return $json;
         type_version=4.4,
     )
 
+    log_youtube_upload = make_upload_log_node("log_youtube_upload", [5580, 60], "youtube_shorts")
+    log_tiktok_upload = make_upload_log_node("log_tiktok_upload", [5580, 220], "tiktok")
+    log_instagram_upload = make_upload_log_node("log_instagram_upload", [5580, 380], "instagram_reels")
+
     for node in (
         split_upload_tasks,
         route_youtube_upload,
@@ -243,6 +283,9 @@ return $json;
         upload_youtube,
         upload_tiktok,
         upload_instagram,
+        log_youtube_upload,
+        log_tiktok_upload,
+        log_instagram_upload,
     ):
         upsert_node(nodes, node)
 
@@ -262,6 +305,9 @@ return $json;
     connections["route_youtube_upload"] = {"main": [[{"node": "upload_youtube", "type": "main", "index": 0}]]}
     connections["route_tiktok_upload"] = {"main": [[{"node": "upload_tiktok", "type": "main", "index": 0}]]}
     connections["route_instagram_upload"] = {"main": [[{"node": "upload_instagram", "type": "main", "index": 0}]]}
+    connections["upload_youtube"] = {"main": [[{"node": "log_youtube_upload", "type": "main", "index": 0}]]}
+    connections["upload_tiktok"] = {"main": [[{"node": "log_tiktok_upload", "type": "main", "index": 0}]]}
+    connections["upload_instagram"] = {"main": [[{"node": "log_instagram_upload", "type": "main", "index": 0}]]}
 
     workflow["nodes"] = nodes
     workflow["connections"] = connections

@@ -370,7 +370,7 @@
         4920,
         220
       ],
-      "id": "db9df717-e731-4e03-b0a6-4e7904dd4849",
+      "id": "372ea561-d973-4578-95b7-84bfb7fb7409",
       "name": "split_upload_tasks"
     },
     {
@@ -385,7 +385,7 @@
         5140,
         60
       ],
-      "id": "b451effd-ed7a-4836-adea-cf8f5564f80e",
+      "id": "c9b907d4-5ce9-4e88-94f7-6ed1cc85b897",
       "name": "route_youtube_upload"
     },
     {
@@ -400,7 +400,7 @@
         5140,
         220
       ],
-      "id": "53e308f3-499c-43fd-8858-ef82fb444c58",
+      "id": "abb27dc7-936f-4f71-ac97-fca8c561e619",
       "name": "route_tiktok_upload"
     },
     {
@@ -415,7 +415,7 @@
         5140,
         380
       ],
-      "id": "a0be5b02-f8f2-4a34-839c-f9b5bd561c5e",
+      "id": "31a95d02-081d-4b87-84b2-f5380019ba05",
       "name": "route_instagram_upload"
     },
     {
@@ -433,7 +433,7 @@
         5360,
         60
       ],
-      "id": "b4bf74a5-c98e-493b-9f92-392620fa2b00",
+      "id": "ba83a47e-b026-404b-8d77-90a2ac55ec8f",
       "name": "upload_youtube"
     },
     {
@@ -451,7 +451,7 @@
         5360,
         220
       ],
-      "id": "11c5bee5-254f-4729-ab8f-619bef9cc8d4",
+      "id": "9f83626a-3017-4967-974f-29a724c57121",
       "name": "upload_tiktok"
     },
     {
@@ -469,8 +469,53 @@
         5360,
         380
       ],
-      "id": "eb1d7196-d025-479c-a84e-b5915cdad77d",
+      "id": "be92da8e-d638-47e1-92e4-836055778cbe",
       "name": "upload_instagram"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\n\nconst logDir = '/files/logs/upload';\nif (!fs.existsSync(logDir)) {\n  fs.mkdirSync(logDir, { recursive: true });\n}\n\nconst date = $json.date || new Date().toISOString().slice(0, 10);\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  platform: 'youtube_shorts',\n  success: Boolean($json.success),\n  upload_status: $json.upload_status || null,\n  message: $json.message || $json.error || null,\n  task_file: $json.task_file || null,\n  queue_file: $json.queue_file || null,\n  base_name: $json.base_name || null,\n  video_file: $json.video_file || null\n};\n\nfs.appendFileSync(`${logDir}/${date}_n8n_upload.log`, JSON.stringify(logEntry) + '\\n', 'utf8');\nreturn $json;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5580,
+        60
+      ],
+      "id": "761d3071-4bbd-4dcd-978c-a3f575f656fc",
+      "name": "log_youtube_upload"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\n\nconst logDir = '/files/logs/upload';\nif (!fs.existsSync(logDir)) {\n  fs.mkdirSync(logDir, { recursive: true });\n}\n\nconst date = $json.date || new Date().toISOString().slice(0, 10);\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  platform: 'tiktok',\n  success: Boolean($json.success),\n  upload_status: $json.upload_status || null,\n  message: $json.message || $json.error || null,\n  task_file: $json.task_file || null,\n  queue_file: $json.queue_file || null,\n  base_name: $json.base_name || null,\n  video_file: $json.video_file || null\n};\n\nfs.appendFileSync(`${logDir}/${date}_n8n_upload.log`, JSON.stringify(logEntry) + '\\n', 'utf8');\nreturn $json;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5580,
+        220
+      ],
+      "id": "8e026a02-6a77-4300-922f-8e9d504b376f",
+      "name": "log_tiktok_upload"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const fs = require('fs');\n\nconst logDir = '/files/logs/upload';\nif (!fs.existsSync(logDir)) {\n  fs.mkdirSync(logDir, { recursive: true });\n}\n\nconst date = $json.date || new Date().toISOString().slice(0, 10);\nconst logEntry = {\n  timestamp: new Date().toISOString(),\n  platform: 'instagram_reels',\n  success: Boolean($json.success),\n  upload_status: $json.upload_status || null,\n  message: $json.message || $json.error || null,\n  task_file: $json.task_file || null,\n  queue_file: $json.queue_file || null,\n  base_name: $json.base_name || null,\n  video_file: $json.video_file || null\n};\n\nfs.appendFileSync(`${logDir}/${date}_n8n_upload.log`, JSON.stringify(logEntry) + '\\n', 'utf8');\nreturn $json;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5580,
+        380
+      ],
+      "id": "fbb02b1f-8031-4613-969c-d7b06584f872",
+      "name": "log_instagram_upload"
     }
   ],
   "connections": {
@@ -769,6 +814,39 @@
         [
           {
             "node": "upload_instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload_youtube": {
+      "main": [
+        [
+          {
+            "node": "log_youtube_upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload_tiktok": {
+      "main": [
+        [
+          {
+            "node": "log_tiktok_upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload_instagram": {
+      "main": [
+        [
+          {
+            "node": "log_instagram_upload",
             "type": "main",
             "index": 0
           }
