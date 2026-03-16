@@ -562,10 +562,29 @@ def render_video_with_ass(
     asset_type: str,
 ) -> None:
     bg_input_args, bg_filter = build_background_input(duration, style, asset_path, asset_type)
+    force_style = ",".join(
+        [
+            f"Fontname={subtitle_font_name()}",
+            f"Fontsize={SUBTITLE_FONT_SIZE}",
+            "Bold=-1",
+            "PrimaryColour=&H00FFFFFF",
+            "SecondaryColour=&H00FFFFFF",
+            "OutlineColour=&H00000000",
+            "BackColour=&HFF000000",
+            "BorderStyle=1",
+            "Outline=7",
+            "Shadow=0",
+            "Alignment=2",
+            "MarginL=110",
+            "MarginR=110",
+            "MarginV=170",
+        ]
+    )
     subtitle_filter = (
-        f"ass=filename='{str(ass_host)}':"
+        f"subtitles='{str(ass_host)}':"
         f"original_size={VIDEO_SIZE[0]}x{VIDEO_SIZE[1]}:"
-        f"fontsdir='{str(find_subtitle_font_path().parent)}'"
+        f"fontsdir='{str(find_subtitle_font_path().parent)}':"
+        f"force_style='{force_style}'"
     )
     subprocess.run(
         [
