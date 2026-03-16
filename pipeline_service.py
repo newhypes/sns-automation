@@ -295,10 +295,10 @@ def find_font_path() -> Path:
 
 def find_subtitle_font_path() -> Path:
     candidates = (
-        Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"),
-        Path("/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf"),
-        Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
         Path("/System/Library/Fonts/Supplemental/Arial Black.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Narrow Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"),
     )
     for candidate in candidates:
         if candidate.exists():
