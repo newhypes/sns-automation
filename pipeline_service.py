@@ -562,6 +562,11 @@ def render_video_with_ass(
     asset_type: str,
 ) -> None:
     bg_input_args, bg_filter = build_background_input(duration, style, asset_path, asset_type)
+    subtitle_filter = (
+        f"ass=filename='{str(ass_host)}':"
+        f"original_size={VIDEO_SIZE[0]}x{VIDEO_SIZE[1]}:"
+        f"fontsdir='{str(find_subtitle_font_path().parent)}'"
+    )
     subprocess.run(
         [
             "ffmpeg",
@@ -570,7 +575,7 @@ def render_video_with_ass(
             "-i",
             str(audio_host),
             "-filter_complex",
-            f"[0:v]{bg_filter},subtitles='{str(ass_host)}'[v]",
+            f"[0:v]{bg_filter},{subtitle_filter}[v]",
             "-map",
             "[v]",
             "-map",
