@@ -148,6 +148,7 @@ def interactive_authorize(client: dict[str, Any], token_file: Path) -> dict[str,
     server = ThreadingHTTPServer(("127.0.0.1", port), OAuthCallbackHandler)
     server.timeout = 1
     server.auth_payload = None  # type: ignore[attr-defined]
+    print(f"YouTube OAuth URL: {auth_url}", file=sys.stderr, flush=True)
     opened = webbrowser.open(auth_url, new=1, autoraise=True)
     if not opened:
         print(f"Open this URL to authorize YouTube upload: {auth_url}", file=sys.stderr)
