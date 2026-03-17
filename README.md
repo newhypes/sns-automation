@@ -18,6 +18,8 @@
 - TikTok credentials: `~/.openclaw/credentials/tiktok_credentials.json`
 - Instagram credentials: `~/.openclaw/credentials/instagram_credentials.json`
 
+저장소 템플릿은 `credentials_templates/` 아래에 있습니다.
+
 ## 1. YouTube Shorts OAuth2
 
 ### Google Cloud 설정
