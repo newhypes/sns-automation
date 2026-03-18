@@ -880,7 +880,7 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
     background_asset, background_type = choose_background_asset(str(data.get("variant")))
     psych_payload = load_psych_card_script(data)
 
-    def render_psych_card() -> tuple[str, Path | None, str | None, str, str | None, list[str], str]:
+    def render_psych_card() -> tuple[str, str | None, str | None, str, str | None, list[str], str]:
         entries = subtitle_display_entries(parse_srt(srt_host))
         if entries:
             build_ass_subtitles(entries, ass_host)
@@ -900,6 +900,7 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
         return (
             "psych_card",
             None,
+            str(manifest.get("background_mode", "gradient")),
             None,
             to_container_path(manifest_host),
             cards_dir,
