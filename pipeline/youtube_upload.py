@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import re
 import secrets
 import socket
 import sys
@@ -16,28 +17,42 @@ import requests
 from upload_common import (
     CREDENTIAL_ROOT,
     UploadError,
-    build_caption_text,
     credential_missing_payload,
     load_credentials,
+    normalize_hashtags,
     print_json,
     read_task_and_video,
     save_json,
+    sanitize_text,
     success_payload,
     failure_payload,
+    request_json,
 )
 
 
 PLATFORM = "youtube_shorts"
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 DEFAULT_CREDENTIAL_FILE = CREDENTIAL_ROOT / "youtube_client_secret.json"
-DEFAULT_TOKEN_FILE = CREDENTIAL_ROOT / "youtube_token.json"
+DEFAULT_TOKEN_FILE = None
+CHANNEL_ID_BY_VARIANT = {
+    "female": "UCsjQI_dDu7Y-5oBcokJQWQw",
+    "male": "UCsbm6ooh97MQl0h9ufUzRGA",
+    "psych": "UCsbm6ooh97MQl0h9ufUzRGA",
+}
+TOKEN_ROUTE_BY_VARIANT = {
+    "female": "female",
+    "male": "male",
+    "psych": "male",
+}
+VARIANT_RE = re.compile(r"(?:^|[_\W])(female|male|psych)(?:$|[_\W])", re.IGNORECASE)
+SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Upload a rendered video to YouTube Shorts")
     parser.add_argument("task_file")
     parser.add_argument("--credential-file", default=str(DEFAULT_CREDENTIAL_FILE))
-    parser.add_argument("--token-file", default=str(DEFAULT_TOKEN_FILE))
+    parser.add_argument("--token-file")
     return parser.parse_args()
 
 
@@ -193,14 +208,115 @@ def ensure_access_token(client: dict[str, Any], token_file: Path) -> dict[str, A
     return interactive_authorize(client, token_file)
 
 
-def create_upload_session(access_token: str, task: dict[str, Any], video_path: Path, credential_payload: dict[str, Any]) -> str:
-    caption = build_caption_text(task, max_length=4900)
-    title = (task.get("title") or task.get("base_name") or video_path.stem).strip()
+def detect_variant(task: dict[str, Any], video_path: Path) -> str:
+    candidates = [
+        task.get("variant"),
+        task.get("base_name"),
+        task.get("title"),
+        task.get("video_file"),
+        " ".join(str(value) for value in task.get("hashtags", [])),
+        video_path.stem,
+    ]
+    for candidate in candidates:
+        text = str(candidate or "").strip()
+        if not text:
+            continue
+        match = VARIANT_RE.search(text)
+        if match:
+            return match.group(1).lower()
+        lower = text.lower()
+        if lower in CHANNEL_ID_BY_VARIANT:
+            return lower
+    raise UploadError(f"Unable to determine variant for YouTube upload: {task_file_hint(task, video_path)}")
+
+
+def task_file_hint(task: dict[str, Any], video_path: Path) -> str:
+    return f"base_name={task.get('base_name')} video={video_path.name}"
+
+
+def select_token_file(task: dict[str, Any], video_path: Path, cli_token_file: str | None) -> Path:
+    if cli_token_file:
+        return Path(cli_token_file).expanduser()
+    variant = detect_variant(task, video_path)
+    route_key = TOKEN_ROUTE_BY_VARIANT[variant]
+    routed_path = CREDENTIAL_ROOT / f"youtube_token_{route_key}.json"
+    legacy_path = CREDENTIAL_ROOT / "youtube_token.json"
+    if routed_path.exists():
+        return routed_path
+    if route_key == "male" and legacy_path.exists():
+        return legacy_path
+    return routed_path
+
+
+def extract_sentences(*values: Any) -> list[str]:
+    sentences: list[str] = []
+    for value in values:
+        cleaned = sanitize_text(value, drop_topic_lines=True)
+        if not cleaned:
+            continue
+        parts = [part.strip() for part in SENTENCE_SPLIT_RE.split(cleaned) if part.strip()]
+        if not parts:
+            parts = [cleaned]
+        sentences.extend(parts)
+    return sentences
+
+
+def build_upload_title(task: dict[str, Any], video_path: Path) -> str:
+    candidates = extract_sentences(task.get("hook"), task.get("title"), task.get("caption"))
+    if candidates:
+        return candidates[0][:100].strip()
+    return video_path.stem[:100]
+
+
+def build_upload_description(task: dict[str, Any], title: str) -> str:
+    title_key = re.sub(r"\s+", " ", title).strip().lower()
+    detail_line = ""
+    for sentence in extract_sentences(task.get("script"), task.get("caption"), task.get("description")):
+        sentence_key = re.sub(r"\s+", " ", sentence).strip().lower()
+        if sentence_key and sentence_key != title_key:
+            detail_line = sentence
+            break
+    lines = [title]
+    if detail_line:
+        lines.append(detail_line)
+    hashtags = " ".join(normalize_hashtags(task.get("hashtags")))
+    if hashtags:
+        lines.append(hashtags)
+    return "\n".join(lines[:3])[:4900].strip()
+
+
+def fetch_authenticated_channel(access_token: str) -> dict[str, Any]:
+    payload = request_json(
+        "GET",
+        "https://www.googleapis.com/youtube/v3/channels",
+        expected_statuses=(200,),
+        headers={"Authorization": f"Bearer {access_token}"},
+        params={"part": "id,snippet", "mine": "true"},
+    )
+    items = payload.get("items") or []
+    if not items:
+        raise UploadError("No YouTube channel is linked to the authorized account")
+    item = items[0]
+    return {
+        "id": item.get("id"),
+        "title": (item.get("snippet") or {}).get("title"),
+    }
+
+
+def create_upload_session(
+    access_token: str,
+    task: dict[str, Any],
+    video_path: Path,
+    credential_payload: dict[str, Any],
+    *,
+    title: str,
+    description: str,
+) -> str:
     tags = [tag.lstrip("#") for tag in task.get("hashtags", []) if str(tag).strip()]
     metadata = {
         "snippet": {
             "title": title[:100],
-            "description": caption,
+            "description": description,
             "tags": tags[:15],
             "categoryId": str(credential_payload.get("category_id", "22")),
         },
@@ -249,7 +365,6 @@ def main() -> int:
     args = parse_args()
     task_file = Path(args.task_file).expanduser().resolve()
     credential_file = Path(args.credential_file).expanduser()
-    token_file = Path(args.token_file).expanduser()
 
     if not task_file.exists():
         print_json(failure_payload(PLATFORM, task_file, credential_file, f"Task file does not exist: {task_file}"))
@@ -268,6 +383,9 @@ def main() -> int:
 
     try:
         task, video_path = read_task_and_video(task_file)
+        variant = detect_variant(task, video_path)
+        expected_channel_id = CHANNEL_ID_BY_VARIANT[variant]
+        token_file = select_token_file(task, video_path, args.token_file)
         credential_payload = load_credentials(credential_file)
         client = extract_client_config(credential_payload)
         required = ["client_id", "client_secret", "auth_uri", "token_uri"]
@@ -275,7 +393,24 @@ def main() -> int:
         if missing:
             raise UploadError(f"YouTube client secret JSON is missing fields: {', '.join(missing)}")
         token_payload = ensure_access_token(client, token_file)
-        upload_url = create_upload_session(token_payload["access_token"], task, video_path, credential_payload)
+        authenticated_channel = fetch_authenticated_channel(token_payload["access_token"])
+        actual_channel_id = str(authenticated_channel.get("id") or "")
+        if actual_channel_id != expected_channel_id:
+            raise UploadError(
+                f"Authorized YouTube channel mismatch for {variant}: expected {expected_channel_id}, "
+                f"got {actual_channel_id or 'unknown'} ({authenticated_channel.get('title') or 'unknown'}). "
+                f"Re-authorize using {token_file}."
+            )
+        title = build_upload_title(task, video_path)
+        description = build_upload_description(task, title)
+        upload_url = create_upload_session(
+            token_payload["access_token"],
+            task,
+            video_path,
+            credential_payload,
+            title=title,
+            description=description,
+        )
         video_metadata = upload_video(token_payload["access_token"], upload_url, video_path)
         video_id = video_metadata.get("id")
         print_json(
@@ -283,6 +418,11 @@ def main() -> int:
                 PLATFORM,
                 task_file,
                 credential_file,
+                variant=variant,
+                target_channel_id=expected_channel_id,
+                target_channel_title=authenticated_channel.get("title"),
+                upload_title=title,
+                upload_description=description,
                 video_id=video_id,
                 video_url=f"https://www.youtube.com/shorts/{video_id}" if video_id else None,
                 message="YouTube Shorts upload completed",
