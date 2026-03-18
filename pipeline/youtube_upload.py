@@ -31,7 +31,10 @@ from upload_common import (
 
 
 PLATFORM = "youtube_shorts"
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 DEFAULT_CREDENTIAL_FILE = CREDENTIAL_ROOT / "youtube_client_secret.json"
 DEFAULT_TOKEN_FILE = None
 CHANNEL_ID_BY_VARIANT = {
@@ -77,6 +80,11 @@ def iso_to_timestamp(value: str | None) -> float:
 def token_is_valid(payload: dict[str, Any]) -> bool:
     expires_at = iso_to_timestamp(payload.get("expires_at"))
     return bool(payload.get("access_token")) and expires_at > time.time() + 60
+
+
+def token_has_required_scopes(payload: dict[str, Any]) -> bool:
+    granted = {scope.strip() for scope in str(payload.get("scope") or "").split() if scope.strip()}
+    return set(SCOPES).issubset(granted)
 
 
 def save_token(token_file: Path, payload: dict[str, Any], previous: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -201,10 +209,12 @@ def interactive_authorize(client: dict[str, Any], token_file: Path) -> dict[str,
 def ensure_access_token(client: dict[str, Any], token_file: Path) -> dict[str, Any]:
     if token_file.exists():
         current = load_credentials(token_file)
-        if token_is_valid(current):
+        if token_is_valid(current) and token_has_required_scopes(current):
             return current
+        if token_is_valid(current) and not token_has_required_scopes(current):
+            return interactive_authorize(client, token_file)
     refreshed = refresh_access_token(client, token_file)
-    if refreshed and token_is_valid(refreshed):
+    if refreshed and token_is_valid(refreshed) and token_has_required_scopes(refreshed):
         return refreshed
     return interactive_authorize(client, token_file)
 
