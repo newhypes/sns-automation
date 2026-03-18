@@ -901,7 +901,6 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
             "psych_card",
             None,
             str(manifest.get("background_mode", "gradient")),
-            None,
             to_container_path(manifest_host),
             cards_dir,
             card_files,
