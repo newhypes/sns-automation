@@ -16,6 +16,9 @@ from urllib.parse import urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 
+from card_renderer import render_from_manifest
+from manifest_builder import script_to_manifest
+
 
 CONTENT_ROOT = Path("/Users/bigmac/.openclaw/workspace/content_factory")
 CONTAINER_ROOT = Path("/files")
@@ -85,6 +88,11 @@ def ensure_content_tree() -> None:
         "audio",
         "subs",
         "videos",
+        "topics",
+        "reports",
+        "manifests",
+        "cards",
+        "templates",
         "publish_queue",
         "queue/pending",
         "queue/rendering",
@@ -96,6 +104,7 @@ def ensure_content_tree() -> None:
         "logs/upload",
     ):
         ensure_directory(CONTENT_ROOT / relative)
+    ensure_psych_templates()
 
 
 def to_host_path(path_like: str | None) -> Path | None:
@@ -127,14 +136,12 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
 def build_base_name(data: dict[str, Any]) -> str:
     if data.get("base_name"):
         return str(data["base_name"])
-    return "_".join(
-        [
-            str(data["date"]),
-            str(data["slug"]),
-            str(data["hook_slug"]),
-            str(data["variant"]),
-        ]
-    )
+    parts = [str(data["date"]), str(data["slug"])]
+    hook_slug = str(data.get("hook_slug") or "").strip()
+    if hook_slug and str(data.get("format")) != "psych_card":
+        parts.append(hook_slug)
+    parts.append(str(data["variant"]))
+    return "_".join(parts)
 
 
 def load_queue_manifest(queue_file: str | None, fallback: dict[str, Any]) -> tuple[dict[str, Any], Path]:
@@ -158,6 +165,7 @@ def load_queue_manifest(queue_file: str | None, fallback: dict[str, Any]) -> tup
         "slug": fallback.get("slug"),
         "hook_slug": fallback.get("hook_slug"),
         "variant": fallback.get("variant"),
+        "format": fallback.get("format"),
         "voice": fallback.get("voice"),
         "status": "pending",
         "retry_count": int(fallback.get("retry_count", 0)),
@@ -197,6 +205,7 @@ def log_failure(stage: str, data: dict[str, Any], error: str) -> None:
             "topic": data.get("topic"),
             "hook": data.get("hook"),
             "variant": data.get("variant"),
+            "format": data.get("format"),
         },
     )
 
@@ -216,6 +225,67 @@ def run_with_retries(stage: str, attempts: int, data: dict[str, Any], fn):
                 time.sleep(min(3, attempt))
     assert last_error is not None
     raise last_error
+
+
+def ensure_psych_templates() -> None:
+    templates = {
+        "psych_hook_v1.json": {"asset_type": "keyword_card", "layout": "centered_title", "accent": "rose"},
+        "psych_concept_v1.json": {"asset_type": "concept_card", "layout": "headline_plus_body", "accent": "blue"},
+        "psych_chat_v1.json": {"asset_type": "chat_ui", "layout": "phone_bubble", "accent": "violet"},
+        "psych_explanation_v1.json": {"asset_type": "explanation_card", "layout": "headline_plus_body", "accent": "emerald"},
+        "psych_reframe_v1.json": {"asset_type": "reframe_card", "layout": "headline_plus_body", "accent": "pink"},
+        "psych_cta_v1.json": {"asset_type": "cta_card", "layout": "cta_focus", "accent": "amber"},
+    }
+    for filename, payload in templates.items():
+        target = CONTENT_ROOT / "templates" / filename
+        if not target.exists():
+            write_json(target, payload)
+
+
+def load_psych_card_script(data: dict[str, Any]) -> dict[str, Any] | None:
+    payload = data.get("psych_script_card")
+    if isinstance(payload, dict) and payload.get("format") == "psych_card" and isinstance(payload.get("cards"), list):
+        return payload
+
+    for key in ("script_card_file", "script_file"):
+        candidate = to_host_path(str(data.get(key))) if data.get(key) else None
+        if not candidate or not candidate.exists():
+            continue
+        try:
+            loaded = json.loads(candidate.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if loaded.get("format") == "psych_card" and isinstance(loaded.get("cards"), list):
+            return loaded
+    return None
+
+
+def psych_card_spoken_script(payload: dict[str, Any]) -> str:
+    parts = [str(card.get("voiceover", "")).strip() for card in payload.get("cards", [])]
+    return "\n\n".join(part for part in parts if part)
+
+
+def psych_card_defaults(data: dict[str, Any]) -> dict[str, Any]:
+    payload = load_psych_card_script(data)
+    if not payload:
+        return dict(data)
+    variant = str(payload.get("variant", data.get("variant", "psych")))
+    defaults = {
+        "date": payload.get("date"),
+        "slug": payload.get("slug"),
+        "variant": variant,
+        "format": payload.get("format", "psych_card"),
+        "topic": payload.get("title"),
+        "hook": payload.get("hook_text"),
+        "script": psych_card_spoken_script(payload),
+        "voice": data.get("voice") or VOICE_MAP.get(variant, VOICE_MAP["psych"])["voice"],
+        "hashtags": payload.get("hashtags", []),
+    }
+    merged = dict(defaults)
+    merged.update(data)
+    if "script" not in data or not str(data.get("script", "")).strip():
+        merged["script"] = defaults["script"]
+    return merged
 
 
 def probe_duration(audio_path: Path) -> float:
@@ -727,6 +797,7 @@ def make_failure(stage: str, data: dict[str, Any], error: Exception | str) -> di
 
 def handle_tts(data: dict[str, Any]) -> dict[str, Any]:
     ensure_content_tree()
+    data = psych_card_defaults(data)
     base_name = build_base_name(data)
     audio_host = CONTENT_ROOT / "audio" / f"{base_name}.mp3"
     srt_host = CONTENT_ROOT / "subs" / f"{base_name}.srt"
@@ -768,6 +839,7 @@ def handle_tts(data: dict[str, Any]) -> dict[str, Any]:
                 "stage": "tts",
                 "success": True,
                 "base_name": base_name,
+                "format": data.get("format"),
                 "audio_file": to_container_path(audio_host),
                 "srt_file": to_container_path(srt_host),
                 "duration_seconds": duration,
@@ -792,6 +864,7 @@ def handle_tts(data: dict[str, Any]) -> dict[str, Any]:
 
 def handle_render(data: dict[str, Any]) -> dict[str, Any]:
     ensure_content_tree()
+    data = psych_card_defaults(data)
     base_name = build_base_name(data)
     audio_host = to_host_path(data.get("audio_file"))
     srt_host = to_host_path(data.get("srt_file"))
@@ -805,19 +878,61 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
     ass_host = CONTENT_ROOT / "subs" / f"{base_name}.ass"
     style = VOICE_MAP.get(str(data.get("variant")), VOICE_MAP["psych"])
     background_asset, background_type = choose_background_asset(str(data.get("variant")))
+    psych_payload = load_psych_card_script(data)
+
+    def render_psych_card() -> tuple[str, Path | None, str | None, str, str | None, list[str], str]:
+        entries = subtitle_display_entries(parse_srt(srt_host))
+        if entries:
+            build_ass_subtitles(entries, ass_host)
+
+        manifest = script_to_manifest(psych_payload)
+        manifest["base_name"] = base_name
+        manifest["date"] = data.get("date")
+        manifest["audio_path"] = to_container_path(audio_host)
+        manifest["subtitle_path"] = to_container_path(ass_host)
+        manifest_host = CONTENT_ROOT / "manifests" / f"{base_name}.json"
+        write_json(manifest_host, manifest)
+
+        result = render_from_manifest(manifest, content_root=CONTENT_ROOT)
+        card_files = [to_container_path(Path(path)) for path in result["card_files"]]
+        cards_dir = to_container_path(Path(result["cards_dir"]))
+        final_video = Path(result["final_video"])
+        return (
+            "psych_card",
+            None,
+            None,
+            to_container_path(manifest_host),
+            cards_dir,
+            card_files,
+            str(final_video),
+        )
 
     def execute() -> dict[str, Any]:
         update_queue_manifest(data.get("queue_file"), data, status="rendering", destination="rendering")
-        subtitle_mode = render_video_from_srt(
-            audio_host,
-            srt_host,
-            video_host,
-            ass_host,
-            duration,
-            style,
-            background_asset,
-            background_type,
-        )
+        manifest_file = None
+        cards_dir = None
+        card_files: list[str] = []
+        if psych_payload and str(data.get("format")) == "psych_card":
+            subtitle_mode, render_bg_asset, render_bg_type, manifest_file, cards_dir, card_files, rendered_video = render_psych_card()
+            rendered_video_path = Path(rendered_video)
+            if rendered_video_path != video_host:
+                ensure_directory(video_host.parent)
+                rendered_video_path.replace(video_host)
+            background_value = render_bg_asset
+            background_type_value = render_bg_type
+        else:
+            subtitle_mode = render_video_from_srt(
+                audio_host,
+                srt_host,
+                video_host,
+                ass_host,
+                duration,
+                style,
+                background_asset,
+                background_type,
+            )
+            background_value = to_container_path(background_asset) if background_asset else None
+            background_type_value = background_type
         queue_file = update_queue_manifest(
             data.get("queue_file"),
             data,
@@ -831,9 +946,12 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
                 "duration_seconds": duration,
                 "video_width": VIDEO_SIZE[0],
                 "video_height": VIDEO_SIZE[1],
-                "background_type": background_type,
-                "background_asset": to_container_path(background_asset) if background_asset else None,
+                "background_type": background_type_value,
+                "background_asset": background_value,
                 "subtitle_mode": subtitle_mode,
+                "manifest_file": manifest_file,
+                "cards_dir": cards_dir,
+                "card_files": card_files,
             },
         )
         append_jsonl(
@@ -843,11 +961,14 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
                 "stage": "render",
                 "success": True,
                 "base_name": base_name,
+                "format": data.get("format"),
                 "video_file": to_container_path(video_host),
-                "background_type": background_type,
-                "background_asset": str(background_asset) if background_asset else None,
+                "background_type": background_type_value,
+                "background_asset": background_value,
                 "subtitle_mode": subtitle_mode,
                 "ass_file": to_container_path(ass_host),
+                "manifest_file": manifest_file,
+                "cards_dir": cards_dir,
                 "video_width": VIDEO_SIZE[0],
                 "video_height": VIDEO_SIZE[1],
             },
@@ -863,9 +984,12 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
             duration_seconds=duration,
             video_width=VIDEO_SIZE[0],
             video_height=VIDEO_SIZE[1],
-            background_type=background_type,
-            background_asset=to_container_path(background_asset) if background_asset else None,
+            background_type=background_type_value,
+            background_asset=background_value,
             subtitle_mode=subtitle_mode,
+            manifest_file=manifest_file,
+            cards_dir=cards_dir,
+            card_files=card_files,
         )
 
     try:
