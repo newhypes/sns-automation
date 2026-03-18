@@ -46,6 +46,7 @@ TOKEN_ROUTE_BY_VARIANT = {
 }
 VARIANT_RE = re.compile(r"(?:^|[_\W])(female|male|psych)(?:$|[_\W])", re.IGNORECASE)
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+INLINE_LABEL_RE = re.compile(r"\b(hook|topic|script)\s*:\s*", re.IGNORECASE)
 
 
 def parse_args() -> argparse.Namespace:
@@ -252,6 +253,8 @@ def extract_sentences(*values: Any) -> list[str]:
     sentences: list[str] = []
     for value in values:
         cleaned = sanitize_text(value, drop_topic_lines=True)
+        cleaned = INLINE_LABEL_RE.sub("", cleaned)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
         if not cleaned:
             continue
         parts = [part.strip() for part in SENTENCE_SPLIT_RE.split(cleaned) if part.strip()]
@@ -271,10 +274,18 @@ def build_upload_title(task: dict[str, Any], video_path: Path) -> str:
 def build_upload_description(task: dict[str, Any], title: str) -> str:
     title_key = re.sub(r"\s+", " ", title).strip().lower()
     detail_line = ""
-    for sentence in extract_sentences(task.get("script"), task.get("caption"), task.get("description")):
-        sentence_key = re.sub(r"\s+", " ", sentence).strip().lower()
-        if sentence_key and sentence_key != title_key:
-            detail_line = sentence
+    raw_sources = [task.get("script"), task.get("caption"), task.get("description")]
+    for raw_source in raw_sources:
+        for sentence in extract_sentences(raw_source):
+            sentence_key = re.sub(r"\s+", " ", sentence).strip().lower()
+            if sentence_key.startswith(title_key):
+                trimmed = sentence[len(title) :].strip(" -:|")
+                sentence = trimmed or sentence
+                sentence_key = re.sub(r"\s+", " ", sentence).strip().lower()
+            if sentence_key and sentence_key != title_key:
+                detail_line = sentence
+                break
+        if detail_line:
             break
     lines = [title]
     if detail_line:
