@@ -31,6 +31,13 @@ def upsert_node(nodes, new_node):
     nodes.append(new_node)
 
 
+def get_node(nodes, name):
+    for node in nodes:
+        if node["name"] == name:
+            return node
+    raise KeyError(f"Missing node: {name}")
+
+
 def make_upload_log_node(name, position, platform):
     return make_node(
         name,
@@ -75,6 +82,161 @@ def main() -> None:
 
     nodes = copy.deepcopy(workflow["nodes"])
     connections = copy.deepcopy(workflow["connections"])
+
+    assign_variants = get_node(nodes, "assign_variants")
+    assign_variants["position"] = [2060, -180]
+    assign_variants["parameters"]["jsCode"] = """const voiceMap = {
+  female: { voice: 'en-US-JennyNeural', image_dir: 'female_host' },
+  male: { voice: 'en-US-GuyNeural', image_dir: 'male_host' },
+  psych: { voice: 'en-US-AriaNeural', image_dir: 'psych_host' }
+};
+
+const today = new Date().toISOString().slice(0, 10);
+
+return $input.all().flatMap(item =>
+  Object.entries(voiceMap).map(([variant, config]) => ({
+    date: today,
+    topic: item.json.topic,
+    hook: item.json.hook,
+    variant,
+    voice: config.voice,
+    voice_id: config.voice,
+    image_dir: config.image_dir
+  }))
+);
+"""
+
+    script_generator = get_node(nodes, "script generator")
+    script_generator["position"] = [2280, 0]
+    script_generator["type"] = "n8n-nodes-base.httpRequest"
+    script_generator["typeVersion"] = 4.4
+    script_generator["parameters"] = {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendBody": True,
+        "specifyBody": "json",
+        "jsonBody": """={{ JSON.stringify((() => {
+  const guides = {
+    female: {
+      tone: 'Write from a female perspective with an emotional, validating, highly relatable tone for American short-form relationship psychology content.',
+      style: 'Make it feel intimate, self-aware, and deeply resonant without sounding cheesy.',
+    },
+    male: {
+      tone: 'Write from a male perspective with a direct, blunt, reality-based tone for American short-form relationship psychology content.',
+      style: 'Make it practical, sharp, and honest like someone explaining what really changes attraction.',
+    },
+    psych: {
+      tone: 'Write as a psychology narrator with an analytical, insightful, pattern-driven tone for American short-form relationship psychology content.',
+      style: 'Explain the emotional mechanism clearly and land on a strong psychological insight.',
+    },
+  };
+
+  const variant = $json.variant || 'psych';
+  const guide = guides[variant] || guides.psych;
+
+  return {
+    model: 'gpt-4.1-mini',
+    messages: [
+      {
+        role: 'system',
+        content: `You write viral 15-30 second scripts for U.S. TikTok, Reels, and YouTube Shorts about dating and relationship psychology. ${guide.tone} ${guide.style} Every script must have 3 parts: a scroll-stopping hook in line 1, a concise body in the middle, and a CTA in the final line. Output only plain spoken English. No labels, no bullets, no emojis, no hashtags, no quotation marks.`,
+      },
+      {
+        role: 'user',
+        content: `Topic: ${$json.topic}
+Hook direction: ${$json.hook}
+Variant: ${variant}
+
+Write one script with these rules:
+- 6 to 8 short lines total
+- Line 1 must be a strong hook that stops the scroll in under 3 seconds
+- Lines 2 to 6 should be the body and explain the psychology clearly
+- Final line must be a CTA that invites comments or a follow
+- Keep the language natural for American short-form content
+- Use the hook direction as the first line or a sharper version of it
+- No filler, no generic advice, no labels`,
+      },
+    ],
+    temperature: 0.9,
+    max_tokens: 280,
+  };
+})()) }}""",
+        "options": {},
+    }
+    script_generator["credentials"] = {"openAiApi": {"name": "GPT-OAuth"}}
+
+    clean_scripts = get_node(nodes, "clean_scripts")
+    clean_scripts["position"] = [2500, 0]
+    clean_scripts["parameters"]["jsCode"] = """const script = $json.choices?.[0]?.message?.content || '';
+const item = $('assign_variants').item.json;
+
+return {
+  date: item.date,
+  topic: item.topic,
+  hook: item.hook,
+  variant: item.variant,
+  voice: item.voice,
+  voice_id: item.voice_id,
+  image_dir: item.image_dir,
+  script: script.trim()
+};
+"""
+
+    build_slug = get_node(nodes, "build_slug")
+    build_slug["position"] = [2720, 0]
+    build_slug["parameters"]["jsCode"] = """function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\\s-]/g, '')
+    .trim()
+    .replace(/\\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 60);
+}
+
+return {
+  ...$json,
+  slug: slugify($json.topic),
+  hook_slug: slugify($json.hook)
+};
+"""
+
+    save_script_json = get_node(nodes, "save_script_json")
+    save_script_json["position"] = [2940, 0]
+    save_script_json["parameters"]["jsCode"] = """const fs = require('fs');
+const path = require('path');
+
+const filename = `${$json.date}_${$json.slug}_${$json.hook_slug}_${$json.variant}.json`;
+const filepath = `/files/scripts/${filename}`;
+const dir = path.dirname(filepath);
+
+if (!fs.existsSync(dir)) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+const content = JSON.stringify({
+  date: $json.date,
+  topic: $json.topic,
+  hook: $json.hook,
+  script: $json.script,
+  slug: $json.slug,
+  hook_slug: $json.hook_slug,
+  variant: $json.variant,
+  voice: $json.voice
+}, null, 2);
+
+fs.writeFileSync(filepath, content, 'utf8');
+
+return {
+  ...$json,
+  script_file: filepath
+};
+"""
+
+    prepare_variant_job = get_node(nodes, "prepare_variant_job")
+    prepare_variant_job["position"] = [3160, 0]
 
     for node in nodes:
         if node["name"] == "log_completion":
@@ -295,6 +457,12 @@ return $json;
             {"node": "split_upload_tasks", "type": "main", "index": 0},
         ]]
     }
+    connections["rename_hook"] = {"main": [[{"node": "assign_variants", "type": "main", "index": 0}]]}
+    connections["assign_variants"] = {"main": [[{"node": "script generator", "type": "main", "index": 0}]]}
+    connections["script generator"] = {"main": [[{"node": "clean_scripts", "type": "main", "index": 0}]]}
+    connections["clean_scripts"] = {"main": [[{"node": "build_slug", "type": "main", "index": 0}]]}
+    connections["build_slug"] = {"main": [[{"node": "save_script_json", "type": "main", "index": 0}]]}
+    connections["save_script_json"] = {"main": [[{"node": "prepare_variant_job", "type": "main", "index": 0}]]}
     connections["split_upload_tasks"] = {
         "main": [[
             {"node": "route_youtube_upload", "type": "main", "index": 0},

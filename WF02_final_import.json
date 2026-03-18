@@ -1,8 +1,8 @@
 [
   {
-    "updatedAt": "2026-03-16T16:24:16.061853Z",
-    "createdAt": "2026-03-16T16:24:16.061853Z",
-    "id": "24281a1179ad4845",
+    "updatedAt": "2026-03-18T11:53:57.104412Z",
+    "createdAt": "2026-03-18T11:53:57.104412Z",
+    "id": "c32c830b582e420f",
     "name": "WF02_final",
     "description": null,
     "active": false,
@@ -145,32 +145,39 @@
       },
       {
         "parameters": {
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
           "method": "POST",
-          "url": "http://host.docker.internal:8000/v1/chat/completions",
+          "url": "https://api.openai.com/v1/chat/completions",
           "sendBody": true,
           "specifyBody": "json",
-          "jsonBody": "{\"model\": \"mlx-community/Qwen2.5-7B-Instruct-4bit\", \"messages\": [{\"role\": \"system\", \"content\": \"You write short-form relationship psychology scripts for TikTok, Reels, and Shorts. Output only the spoken script. Make it emotionally engaging, simple, natural, and easy to narrate. Use 5 to 7 short lines.\"}, {\"role\": \"user\", \"content\": \"Topic: {{$json.topic}}\\\\nHook: {{$json.hook}}\\\\nWrite a 30-second spoken script in simple English. Start with the hook as the first line. Then explain the psychology clearly and end with a memorable closing line.\"}], \"temperature\": 0.7, \"max_tokens\": 220}",
+          "jsonBody": "={{ JSON.stringify((() => {\n  const guides = {\n    female: {\n      tone: 'Write from a female perspective with an emotional, validating, highly relatable tone for American short-form relationship psychology content.',\n      style: 'Make it feel intimate, self-aware, and deeply resonant without sounding cheesy.',\n    },\n    male: {\n      tone: 'Write from a male perspective with a direct, blunt, reality-based tone for American short-form relationship psychology content.',\n      style: 'Make it practical, sharp, and honest like someone explaining what really changes attraction.',\n    },\n    psych: {\n      tone: 'Write as a psychology narrator with an analytical, insightful, pattern-driven tone for American short-form relationship psychology content.',\n      style: 'Explain the emotional mechanism clearly and land on a strong psychological insight.',\n    },\n  };\n\n  const variant = $json.variant || 'psych';\n  const guide = guides[variant] || guides.psych;\n\n  return {\n    model: 'gpt-4.1-mini',\n    messages: [\n      {\n        role: 'system',\n        content: `You write viral 15-30 second scripts for U.S. TikTok, Reels, and YouTube Shorts about dating and relationship psychology. ${guide.tone} ${guide.style} Every script must have 3 parts: a scroll-stopping hook in line 1, a concise body in the middle, and a CTA in the final line. Output only plain spoken English. No labels, no bullets, no emojis, no hashtags, no quotation marks.`,\n      },\n      {\n        role: 'user',\n        content: `Topic: ${$json.topic}\nHook direction: ${$json.hook}\nVariant: ${variant}\n\nWrite one script with these rules:\n- 6 to 8 short lines total\n- Line 1 must be a strong hook that stops the scroll in under 3 seconds\n- Lines 2 to 6 should be the body and explain the psychology clearly\n- Final line must be a CTA that invites comments or a follow\n- Keep the language natural for American short-form content\n- Use the hook direction as the first line or a sharper version of it\n- No filler, no generic advice, no labels`,\n      },\n    ],\n    temperature: 0.9,\n    max_tokens: 280,\n  };\n})()) }}",
           "options": {}
         },
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.4,
         "position": [
-          2060,
+          2280,
           0
         ],
         "id": "d26e7e34-ce1f-4389-b114-66de4fd13878",
-        "name": "script generator"
+        "name": "script generator",
+        "credentials": {
+          "openAiApi": {
+            "name": "GPT-OAuth"
+          }
+        }
       },
       {
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "const script = $json.choices?.[0]?.message?.content || \"\";\n\nreturn {\n  topic: $('rename_hook').item.json.topic,\n  hook: $('rename_hook').item.json.hook,\n  script: script.trim()\n};\n"
+          "jsCode": "const script = $json.choices?.[0]?.message?.content || '';\nconst item = $('assign_variants').item.json;\n\nreturn {\n  date: item.date,\n  topic: item.topic,\n  hook: item.hook,\n  variant: item.variant,\n  voice: item.voice,\n  voice_id: item.voice_id,\n  image_dir: item.image_dir,\n  script: script.trim()\n};\n"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2280,
+          2500,
           0
         ],
         "id": "424281e4-e21c-44ec-a28a-e78726c1aa35",
@@ -180,12 +187,12 @@
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "function slugify(text) {\n  return text\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .trim()\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .slice(0, 60);\n}\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn {\n  date: today,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: slugify($json.topic),\n  hook_slug: slugify($json.hook)\n};\n"
+          "jsCode": "function slugify(text) {\n  return text\n    .toLowerCase()\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .trim()\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .slice(0, 60);\n}\n\nreturn {\n  ...$json,\n  slug: slugify($json.topic),\n  hook_slug: slugify($json.hook)\n};\n"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2500,
+          2720,
           0
         ],
         "id": "327dd836-bfd3-4d54-9eb5-e33102da3f8f",
@@ -195,12 +202,12 @@
         "parameters": {
           "mode": "runOnceForEachItem",
           "language": "javaScript",
-          "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst filename = `${$json.date}_${$json.slug}_${$json.hook_slug}.json`;\nconst filepath = `/files/scripts/${filename}`;\nconst dir = path.dirname(filepath);\n\nif (!fs.existsSync(dir)) {\n  fs.mkdirSync(dir, { recursive: true });\n}\n\nconst content = JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug\n}, null, 2);\n\nfs.writeFileSync(filepath, content, 'utf8');\n\nreturn {\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  script_file: filepath\n};\n"
+          "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst filename = `${$json.date}_${$json.slug}_${$json.hook_slug}_${$json.variant}.json`;\nconst filepath = `/files/scripts/${filename}`;\nconst dir = path.dirname(filepath);\n\nif (!fs.existsSync(dir)) {\n  fs.mkdirSync(dir, { recursive: true });\n}\n\nconst content = JSON.stringify({\n  date: $json.date,\n  topic: $json.topic,\n  hook: $json.hook,\n  script: $json.script,\n  slug: $json.slug,\n  hook_slug: $json.hook_slug,\n  variant: $json.variant,\n  voice: $json.voice\n}, null, 2);\n\nfs.writeFileSync(filepath, content, 'utf8');\n\nreturn {\n  ...$json,\n  script_file: filepath\n};\n"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2720,
+          2940,
           0
         ],
         "id": "c7310560-7f8d-4284-9e10-0ed0dfde8c6a",
@@ -210,13 +217,13 @@
         "parameters": {
           "mode": "runOnceForAllItems",
           "language": "javaScript",
-          "jsCode": "const voiceMap = {\n  female: { voice: 'en-US-JennyNeural', image_dir: 'female_host' },\n  male: { voice: 'en-US-GuyNeural', image_dir: 'male_host' },\n  psych: { voice: 'en-US-AriaNeural', image_dir: 'psych_host' }\n};\n\nreturn $input.all().flatMap(item =>\n  Object.entries(voiceMap).map(([variant, config]) => ({\n    date: item.json.date,\n    topic: item.json.topic,\n    hook: item.json.hook,\n    script: item.json.script,\n    slug: item.json.slug,\n    hook_slug: item.json.hook_slug,\n    script_file: item.json.script_file,\n    variant,\n    voice: config.voice,\n    voice_id: config.voice,\n    image_dir: config.image_dir\n  }))\n);\n"
+          "jsCode": "const voiceMap = {\n  female: { voice: 'en-US-JennyNeural', image_dir: 'female_host' },\n  male: { voice: 'en-US-GuyNeural', image_dir: 'male_host' },\n  psych: { voice: 'en-US-AriaNeural', image_dir: 'psych_host' }\n};\n\nconst today = new Date().toISOString().slice(0, 10);\n\nreturn $input.all().flatMap(item =>\n  Object.entries(voiceMap).map(([variant, config]) => ({\n    date: today,\n    topic: item.json.topic,\n    hook: item.json.hook,\n    variant,\n    voice: config.voice,\n    voice_id: config.voice,\n    image_dir: config.image_dir\n  }))\n);\n"
         },
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
         "position": [
-          2940,
-          0
+          2060,
+          -180
         ],
         "id": "a1b2c3d4-0001-0001-0001-000000000001",
         "name": "assign_variants"
@@ -377,7 +384,7 @@
           4920,
           220
         ],
-        "id": "1ac6fdd6-04c1-4e84-a5ed-51ca50ac554b",
+        "id": "a4a0aca3-ffc2-4a45-ba4b-3bf16e8969b6",
         "name": "split_upload_tasks"
       },
       {
@@ -392,7 +399,7 @@
           5140,
           60
         ],
-        "id": "9d470eb3-579d-4f58-ba40-1624bf87a6ac",
+        "id": "daa033e3-7f95-479f-a801-3e8f63c23df2",
         "name": "route_youtube_upload"
       },
       {
@@ -407,7 +414,7 @@
           5140,
           220
         ],
-        "id": "4732cf80-b666-4380-bd26-1954069885ec",
+        "id": "a0e98392-eb79-42a3-8300-5ebe05623043",
         "name": "route_tiktok_upload"
       },
       {
@@ -422,7 +429,7 @@
           5140,
           380
         ],
-        "id": "fc5a04e5-23c4-4571-84a4-678f012947e9",
+        "id": "52e28709-2d39-4710-bb67-a540175565c9",
         "name": "route_instagram_upload"
       },
       {
@@ -440,7 +447,7 @@
           5360,
           60
         ],
-        "id": "698f3526-6745-43b1-9391-b5b5c0b7e46f",
+        "id": "104e255c-9dd5-427c-a633-3a42ecbe6559",
         "name": "upload_youtube"
       },
       {
@@ -458,7 +465,7 @@
           5360,
           220
         ],
-        "id": "89bf2e79-1b94-47de-833a-45c302073b10",
+        "id": "b58e8b0d-0929-42aa-9308-9cc1ae6c5742",
         "name": "upload_tiktok"
       },
       {
@@ -476,7 +483,7 @@
           5360,
           380
         ],
-        "id": "b41414ca-56f2-4c83-954b-0309139e2925",
+        "id": "7e883a02-0dda-4f4e-9e66-048be383b2e9",
         "name": "upload_instagram"
       },
       {
@@ -491,7 +498,7 @@
           5580,
           60
         ],
-        "id": "de1a83c3-f86c-4de5-b36a-524c33fb1763",
+        "id": "ffc1c419-98ed-4aef-947f-f7005e426a1b",
         "name": "log_youtube_upload"
       },
       {
@@ -506,7 +513,7 @@
           5580,
           220
         ],
-        "id": "2ee20557-27d0-4dac-8a41-c0fb796fc585",
+        "id": "2a64cc1b-dc00-49de-a0a8-c1b38b6789c1",
         "name": "log_tiktok_upload"
       },
       {
@@ -521,7 +528,7 @@
           5580,
           380
         ],
-        "id": "31772fd7-b5f6-47de-a2ca-299520aa05b4",
+        "id": "360ca90f-8e14-4fe0-bd22-7c98a3f1064b",
         "name": "log_instagram_upload"
       }
     ],
@@ -618,7 +625,7 @@
         "main": [
           [
             {
-              "node": "script generator",
+              "node": "assign_variants",
               "type": "main",
               "index": 0
             }
@@ -662,7 +669,7 @@
         "main": [
           [
             {
-              "node": "assign_variants",
+              "node": "prepare_variant_job",
               "type": "main",
               "index": 0
             }
@@ -673,7 +680,7 @@
         "main": [
           [
             {
-              "node": "prepare_variant_job",
+              "node": "script generator",
               "type": "main",
               "index": 0
             }
@@ -868,7 +875,7 @@
       "instanceId": "c5699fcc293042d49471560caf3ac37e"
     },
     "pinData": {},
-    "versionId": "a4e30618-7b85-463d-9975-625fde957a6d",
+    "versionId": "8dd0a67d-1e6a-4d10-afeb-b8047943376c",
     "activeVersionId": null,
     "versionCounter": 1,
     "triggerCount": 0,
