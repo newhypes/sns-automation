@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "render_manifest",
+  "description": "카드 기반 ffmpeg 렌더 매니페스트 스키마",
+  "type": "object",
+  "required": ["slug", "variant", "format", "video_size", "fps", "audio_path", "subtitle_path", "background_mode", "cards"],
+  "properties": {
+    "slug": { "type": "string" },
+    "variant": { "type": "string", "enum": ["psych", "female", "male"] },
+    "format": { "type": "string", "enum": ["psych_card"] },
+    "video_size": { "type": "string", "example": "1080x1920" },
+    "fps": { "type": "integer", "enum": [30] },
+    "audio_path": { "type": "string" },
+    "subtitle_path": { "type": "string" },
+    "background_mode": { "type": "string", "enum": ["loop_video", "gradient", "abstract_motion"] },
+    "background_asset": { "type": "string", "description": "loop_video 모드일 때 사용할 배경 영상 경로" },
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["card_id", "asset_type", "template", "start_sec", "duration_sec"],
+        "properties": {
+          "card_id": { "type": "integer" },
+          "asset_type": { "type": "string", "enum": ["keyword_card", "concept_card", "chat_ui", "explanation_card", "reframe_card", "cta_card"] },
+          "template": { "type": "string" },
+          "start_sec": { "type": "number" },
+          "duration_sec": { "type": "number" },
+          "onscreen_text": { "type": "string" },
+          "motion": { "type": "string" }
+        }
+      }
+    }
+  }
+}

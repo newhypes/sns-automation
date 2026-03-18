@@ -1,0 +1,63 @@
+{
+  "report_date": "2026-03-19",
+  "niche": "relationship psychology",
+  "platforms": ["youtube_shorts", "tiktok", "instagram_reels"],
+  "top_patterns": [
+    {
+      "pattern_name": "why-do-you-still-miss-them",
+      "description": "unfinished closure / intermittent reinforcement angle",
+      "strength_score": 8.7,
+      "evidence": ["title pattern", "hook style", "visual structure"]
+    },
+    {
+      "pattern_name": "they-were-never-confused-about-you",
+      "description": "reframe of mixed signals as intentional behavior",
+      "strength_score": 9.1,
+      "evidence": ["hook pattern", "comment engagement", "save rate"]
+    },
+    {
+      "pattern_name": "your-nervous-system-remembers",
+      "description": "somatic/body memory angle on attachment trauma",
+      "strength_score": 7.9,
+      "evidence": ["title pattern", "retention spike at 0-3s"]
+    }
+  ],
+  "emerging_topics": [
+    {
+      "topic": "why mixed signals feel addictive",
+      "cluster": "attachment / ambiguity",
+      "score": 9.1,
+      "novelty": 7.8,
+      "repeat_risk": 3.1
+    },
+    {
+      "topic": "why you attract emotionally unavailable people",
+      "cluster": "attachment style",
+      "score": 8.8,
+      "novelty": 6.5,
+      "repeat_risk": 5.2
+    },
+    {
+      "topic": "the silence after a fight says more than the fight",
+      "cluster": "conflict / repair",
+      "score": 8.3,
+      "novelty": 8.1,
+      "repeat_risk": 2.4
+    }
+  ],
+  "recommended_formats": ["psych_card", "chat_ui_explainer"],
+  "oversaturated_topics": [
+    "red flags in relationships",
+    "narcissist checklist",
+    "how to get over a breakup"
+  ],
+  "hook_patterns_performing_well": [
+    "question that names a familiar feeling",
+    "reframe of a common belief",
+    "stat or psychological term upfront"
+  ],
+  "notes": [
+    "chat_ui 포맷이 최근 2주 engagement 상승 중",
+    "15-22초 영상이 27초보다 completion rate 높음 - 테스트 권장"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "psych_script_card",
+  "description": "심리 해설 카드형 숏폼 스크립트 스키마",
+  "type": "object",
+  "required": ["date", "slug", "variant", "format", "target_duration_sec", "title", "hook_text", "cards", "hashtags"],
+  "properties": {
+    "date": { "type": "string", "format": "date", "example": "2026-03-19" },
+    "slug": { "type": "string", "example": "mixed-signals-feel-addictive" },
+    "variant": { "type": "string", "enum": ["psych", "female", "male"] },
+    "format": { "type": "string", "enum": ["psych_card"] },
+    "target_duration_sec": { "type": "number", "minimum": 22, "maximum": 32 },
+    "title": { "type": "string" },
+    "hook_text": { "type": "string" },
+    "cards": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["card_id", "type", "duration_sec", "voiceover", "onscreen_text", "visual_type", "motion"],
+        "properties": {
+          "card_id": { "type": "integer" },
+          "type": { "type": "string", "enum": ["hook", "claim", "example", "explanation", "reframe", "cta"] },
+          "duration_sec": { "type": "number" },
+          "voiceover": { "type": "string" },
+          "onscreen_text": { "type": "string" },
+          "visual_type": { "type": "string", "enum": ["keyword_card", "concept_card", "chat_ui", "explanation_card", "reframe_card", "cta_card"] },
+          "motion": { "type": "string", "enum": ["zoom_in", "slide_up", "message_pop", "pan_slow", "fade_in", "pulse"] }
+        }
+      }
+    },
+    "hashtags": { "type": "array", "items": { "type": "string" } }
+  }
+}

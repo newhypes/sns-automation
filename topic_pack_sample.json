@@ -1,0 +1,61 @@
+{
+  "pack_date": "2026-03-19",
+  "niche": "relationship psychology",
+  "topics": [
+    {
+      "slug": "mixed-signals-feel-addictive",
+      "title": "Why mixed signals feel addictive",
+      "cluster": "ambiguity",
+      "emotion_target": "anxiety + curiosity",
+      "format": "psych_card",
+      "priority": "high",
+      "score": 9.0,
+      "angle": "intermittent reinforcement",
+      "repeat_risk": 3.1
+    },
+    {
+      "slug": "you-attract-unavailable-people",
+      "title": "Why you keep attracting emotionally unavailable people",
+      "cluster": "attachment style",
+      "emotion_target": "recognition + self-awareness",
+      "format": "psych_card",
+      "priority": "high",
+      "score": 8.8,
+      "angle": "anxious attachment pattern",
+      "repeat_risk": 5.2
+    },
+    {
+      "slug": "silence-after-fight",
+      "title": "The silence after a fight says more than the fight",
+      "cluster": "conflict / repair",
+      "emotion_target": "validation + curiosity",
+      "format": "psych_card",
+      "priority": "high",
+      "score": 8.3,
+      "angle": "emotional withdrawal as communication",
+      "repeat_risk": 2.4
+    },
+    {
+      "slug": "why-late-replies-create-obsession",
+      "title": "Why late replies make you obsess more",
+      "cluster": "ambiguity",
+      "emotion_target": "anxiety + self-recognition",
+      "format": "psych_card",
+      "priority": "medium",
+      "score": 8.1,
+      "angle": "variable reward schedule",
+      "repeat_risk": 4.0
+    },
+    {
+      "slug": "closure-you-never-get",
+      "title": "Why you never get the closure you need",
+      "cluster": "grief / letting go",
+      "emotion_target": "sadness + recognition",
+      "format": "psych_card",
+      "priority": "medium",
+      "score": 7.9,
+      "angle": "open loops and cognitive fixation",
+      "repeat_risk": 3.8
+    }
+  ]
+}
