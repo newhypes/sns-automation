@@ -164,3 +164,40 @@ PROJECT_CONTEXT.md를 읽었어.
 ```
 CODEX.md와 PROJECT_CONTEXT.md 읽고 YouTube 크리덴셜 연결부터 해줘.
 ```
+
+---
+
+## 영상 스타일 & 컨셉
+
+### 현재 영상 구성
+- **포맷**: 배경 그라디언트 + 음성 + ASS 자막 (텍스트 기반 숏폼)
+- **크기**: 1080x1920 (9:16 세로)
+- **길이**: 약 27초
+- **스타일**: 심리학 인용 + 나레이션 스타일
+
+### 배경 스타일 (variant별)
+- **female**: 따뜻한 핑크/오렌지 그라디언트 (`warm_sunrise_01.png` 등 3장)
+- **male**: 차갑고 모던한 블루/다크 그라디언트
+- **psych**: 어둡고 미스터리한 퍼플/블랙 그라디언트
+- 이미지 위치: `/files/images/female_host/`, `/files/images/male_host/`, `/files/images/psych_host/`
+
+### 자막 스타일
+- ASS 자막, libass 렌더
+- 큰 흰색 볼드 텍스트 + 검은 외곽선
+- 하단 중앙 배치
+- 한 줄씩 표시
+- 폰트 사이즈 80 고정
+- 싱크 오차 약 0.3초 (추후 개선 예정)
+
+### 음성
+- 현재: edge-tts (테스트용)
+- 추후: ElevenLabs 유료 전환 예정
+- female: `en-US-JennyNeural`
+- male: `en-US-GuyNeural`
+- psych: `en-US-AriaNeural`
+
+### 향후 개선 예정
+- 배경: 그라디언트 → AI 생성 이미지 또는 루프 영상
+- 캐릭터 이미지 90장 생성 (female/male/psych 각 30장)
+- 음성: ElevenLabs로 교체
+- 자막 싱크 fine-tuning
