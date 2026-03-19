@@ -111,13 +111,6 @@ def render_gradient_card(card: dict[str, Any], destination: Path) -> Path:
 
 
 def motion_filter(motion: str, fps: int) -> str:
-    frames = max(1, fps * 30)
-    if motion == "zoom_in":
-        return f"zoompan=z='min(zoom+0.0015,1.05)':d=1:s={VIDEO_SIZE[0]}x{VIDEO_SIZE[1]}:fps={fps}"
-    if motion == "pan_slow":
-        return f"zoompan=z='1.03':x='iw*0.01*sin(on/18)':y='ih*0.01*cos(on/24)':d=1:s={VIDEO_SIZE[0]}x{VIDEO_SIZE[1]}:fps={fps}"
-    if motion == "pulse":
-        return f"zoompan=z='1+0.015*sin(on/5)':d=1:s={VIDEO_SIZE[0]}x{VIDEO_SIZE[1]}:fps={fps}"
     return f"fps={fps}"
 
 
