@@ -174,8 +174,14 @@ def concat_card_clips(card_paths: list[Path], output_path: Path) -> Path:
             "0",
             "-i",
             str(concat_path),
-            "-c",
-            "copy",
+            "-r",
+            str(VIDEO_FPS),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-pix_fmt",
+            "yuv420p",
             str(output_path),
         ]
     )
