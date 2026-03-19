@@ -886,6 +886,10 @@ def handle_render(data: dict[str, Any]) -> dict[str, Any]:
             build_ass_subtitles(entries, ass_host)
 
         manifest = script_to_manifest(psych_payload)
+        timeline_total = round(sum(float(card["duration_sec"]) for card in manifest["cards"]), 3)
+        if manifest["cards"] and duration > timeline_total:
+            extension = round(duration - timeline_total, 3)
+            manifest["cards"][-1]["duration_sec"] = round(float(manifest["cards"][-1]["duration_sec"]) + extension, 3)
         manifest["base_name"] = base_name
         manifest["date"] = data.get("date")
         manifest["audio_path"] = to_container_path(audio_host)
